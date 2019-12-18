@@ -1,24 +1,28 @@
-import time
 import pickle
-from indra.databases import ndex_client
 from indra.assemblers.cx import CxAssembler
 from indra.assemblers.html import HtmlAssembler
 from indra.assemblers.cx.hub_layout import add_semantic_hub_layout
 
 
-if __name__ == '__main__':
-    with open('ion_channel_stmts_v1.pkl', 'rb') as fh:
-        stmts_with_counts = pickle.load(fh)
-    '''
+def assemble_html(stmts_with_counts):
     for channel, (stmts, ev_counts, source_counts) in stmts_with_counts.items():
         ha = HtmlAssembler(stmts, ev_totals=ev_counts,
                            source_counts=source_counts,
                            title='INDRA statements for %s' % channel,
                            db_rest_url='https://db.indra.bio')
         ha.save_model('html/%s.html' % channel)
-    '''
+
+
+def assemble_cx(stmts_with_counts):
     for channel, (stmts, ev_counts, source_counts) in stmts_with_counts.items():
         cxa = CxAssembler(stmts, network_name='%s INDRA interactome' % channel)
         cxa.make_model()
         add_semantic_hub_layout(cxa.cx, channel)
         model_id = cxa.upload_model()
+
+
+if __name__ == '__main__':
+    with open('ion_channel_stmts_v1.pkl', 'rb') as fh:
+        stmts_with_counts = pickle.load(fh)
+    assemble_cx()
+    assemble_html()

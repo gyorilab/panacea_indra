@@ -1,15 +1,16 @@
-import os
-import json
 import numpy
-import boto3
 import pickle
 import pandas
-from indra.statements import stmts_to_json
-from indra.assemblers.tsv import TsvAssembler
-from indra.assemblers.html import HtmlAssembler
-from indra.tools import assemble_corpus as ac
-from indra.belief import BeliefEngine
+from indra.statements import Agent
+from indra.databases import hgnc_client
 from indra.sources.indra_db_rest import get_statements
+from indra.preassembler.grounding_mapper import GroundingMapper
+from indra.tools.reground_statements import get_cleaned_statements
+
+
+def get_channel_agent(channel):
+    ag = Agent(channel, db_refs={'HGNC': hgnc_client.get_hgnc_id(channel)})
+    GroundingMapper.standardize_agent_name(ag, standardize_refs=True)
 
 
 def get_channel_statements(channels, ev_limit=100):
@@ -22,6 +23,7 @@ def get_channel_statements(channels, ev_limit=100):
         source_counts = idbp.get_source_counts()
         stmts = idbp.statements
         stmts = filter_out_medscan(stmts, source_counts)
+        stmts = get_cleaned_statements(stmts, channel)
         stmts = filter_out_other_channels(channel, stmts,
                                           all_channel_gene_names)
         all_statements[channel] = (stmts, ev_counts, source_counts)
