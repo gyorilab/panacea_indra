@@ -1,0 +1,73 @@
+{% extends "bootstrap/base.html" %}
+{% import "bootstrap/wtf.html" as wtf %}
+{% import "bootstrap/fixes.html" as fixes %}
+{% import "bootstrap/utils.html" as util %}
+
+<!-- Choices multiselect library: https://github.com/jshjohnson/Choices -->
+<!-- Include Choices CSS -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/choices.js/public/assets/styles/choices.min.css">
+<!-- Include Choices JavaScript -->
+<script src="https://cdn.jsdelivr.net/npm/choices.js/public/assets/scripts/choices.min.js"></script>
+
+{% block content %}
+{{util.flashed_messages(dismissible=True)}}
+<div class="container">
+<div class="jumbotron">
+<h1>Ion-channel inhibitor search</h1>
+<p>
+    This website allows searching for chemicals and other
+    biological entities that are known to negatively regulate
+    a given set of ion channels but are not known to negatively regulate
+    (or are known not to regulate) another set of ion channels.
+</p>
+
+</div>
+</div>
+
+
+<div class="container">
+<style>
+.form-control {
+    width: 90%;
+}
+.btn {
+    margin: 5px;
+}
+#channel-search-panel {
+    min-height: 500px;
+}
+</style>
+    <div class="row">
+        <div class="col-md-1"></div>
+        <div class="col-md-10" align="center">
+            <div id="channel-search-panel" class="panel panel-default">
+                <p>
+                    Enter the names of ion channels.
+                </p>
+                <form class="form" method="post" action='channel_search' role="form">
+                {{ wtf.form_field(channel_search_form.inhibits, class_="form-control") }}
+                {{ wtf.form_field(channel_search_form.not_inhibits, class_="form-control") }}
+                {{ wtf.form_field(channel_search_form.submit_button, class="btn btn-primary") }}
+                </form>
+            </div>
+        </div>
+        <div class="col-md-1"></div>
+    </div>
+</div>
+<div class="container">
+<div class="well">
+<p class="lead">
+The development of this system was funded under the DARPA Panacea program in
+    the Laboratory of Systems Pharmacology at Harvard Medical School.
+</p>
+<p class="lead">
+Point of contact: Benjamin M. Gyori (benjamin_gyori [AT] hms.harvard.edu)
+</p>
+</div>
+</div>
+{% endblock %}
+
+{% block head %}
+{{super()}}
+{{fixes.ie8()}}
+{% endblock %}
