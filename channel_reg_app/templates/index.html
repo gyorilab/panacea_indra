@@ -39,8 +39,21 @@
 
     <script>
     $(document).ready(function() {
-      let inhibitSelect = new Choices('#inhibit-select');
-      let notInhibitSelect = new Choices('#not-inhibit-select');
+      // see https://github.com/jshjohnson/Choices
+      const inhibitSelect = new Choices('#inhibit-select');
+      const notInhibitSelect = new Choices('#not-inhibit-select');
+
+      // Add values used to get result
+      let oldInhibits = {{ old_inhibits_list|safe }};
+      let oldNotInhibits = {{ old_not_inhibits_list|safe }};
+
+      // https://github.com/jshjohnson/Choices#setchoicebyvaluevalue
+      if (oldInhibits) {
+        inhibitSelect.setChoiceByValue(oldInhibits);
+      }
+      if (oldNotInhibits) {
+        notInhibitSelect.setChoiceByValue(oldNotInhibits);
+      }
     })
     </script>
     <div class="row">
