@@ -26,10 +26,17 @@ class ChannelSearchForm(Form):
 
 @app.route('/channel_search', methods=['POST'])
 def channel_search():
+    # Get inhibits
     inhibits = request.form.getlist('inhibits')
     print(inhibits)
+    session['inhibits'] = inhibits
+
+    # Get not inhibits
     not_inhibits = request.form.getlist('not_inhibits')
+    session['not_inhibits'] = not_inhibits
     print(not_inhibits)
+
+    # Get results
     response_list = list(set(inhibits).union(set(not_inhibits)))
     session['response_list'] = response_list
     return redirect('/')
@@ -40,10 +47,16 @@ def index():
     channel_search_form = ChannelSearchForm()
     kwargs = {'channel_search_form': channel_search_form}
     if session.get('response_list'):
-        response_list = session.pop('response_list')
+        response_list = session.pop('response_list', [])
+        old_inhibits_list = session.pop('inhibits', [])
+        old_not_inhibits_list = session.pop('not_inhibits', [])
     else:
         response_list = []
+        old_inhibits_list = []
+        old_not_inhibits_list = []
     kwargs['response_list'] = response_list
+    kwargs['old_inhibits_list'] = old_inhibits_list
+    kwargs['old_not_inhibits_list'] = old_not_inhibits_list
     return render_template('index.html', **kwargs)
 
 
