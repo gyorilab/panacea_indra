@@ -5,25 +5,37 @@ from indra.statements import Agent
 from indra.databases import hgnc_client
 from indra.sources.indra_db_rest import get_statements
 from indra.preassembler.grounding_mapper import GroundingMapper
-from indra.tools.reground_statements import get_cleaned_statements
+#from indra.tools.reground_statements import get_cleaned_statements
+from indra_db.client import get_statements_by_gene_role_type
+
+
+db_mode = 'db'  # 'api'
 
 
 def get_channel_agent(channel):
     ag = Agent(channel, db_refs={'HGNC': hgnc_client.get_hgnc_id(channel)})
     GroundingMapper.standardize_agent_name(ag, standardize_refs=True)
+    return ag
 
 
 def get_channel_statements(channels, ev_limit=100):
     """Get all statements from the database for a list of gene symbols."""
     all_statements = {}
     for channel in channels:
-        idbp = get_statements(agents=[channel], ev_limit=ev_limit,
-                              best_first=False)
-        ev_counts = {int(k): v for k, v in idbp.get_ev_counts().items()}
-        source_counts = idbp.get_source_counts()
-        stmts = idbp.statements
-        stmts = filter_out_medscan(stmts, source_counts)
-        stmts = get_cleaned_statements(stmts, channel)
+        hgnc_id = hgnc_client.get_hgnc_id(channel)
+        if db_mode == 'api':
+            idbp = get_statements(agents=[channel], ev_limit=ev_limit,
+                                  best_first=False)
+            ev_counts = {int(k): v for k, v in idbp.get_ev_counts().items()}
+            source_counts = idbp.get_source_counts()
+            stmts = idbp.statements
+        else:
+            stmts = get_statements_by_gene_role_type(agent_ns='HGNC',
+                                                     agent_id=hgnc_id)
+            ev_counts = {}
+            source_counts = {}
+        #stmts = filter_out_medscan(stmts, source_counts)
+        #stmts = get_cleaned_statements(stmts, get_channel_agent(channel))
         stmts = filter_out_other_channels(channel, stmts,
                                           all_channel_gene_names)
         all_statements[channel] = (stmts, ev_counts, source_counts)
@@ -89,6 +101,6 @@ if __name__ == '__main__':
     print('Read a total of %d channels from %s' % (len(channels), fname))
 
     stmts_with_counts = get_channel_statements(channels)
-    with open('ion_channel_stmts_v1.pkl', 'wb') as fh:
+    with open('ion_channel_stmts_v3.pkl', 'wb') as fh:
         pickle.dump(stmts_with_counts, fh)
     print_statistics(stmts_with_counts)
