@@ -42,6 +42,8 @@ def _get_query_hash(query_json):
 
 
 channels = ['A', 'B', 'C']
+query_cache = {}
+
 
 class ChannelSearchForm(FlaskForm):
     inhibits = SelectMultipleField(label='inhibit all of...',
@@ -62,13 +64,15 @@ def get_reg_stmts():
 
 @app.route('/channel_search', methods=['POST'])
 def channel_search():
+    query = {}
+
     # Get inhibits
     inhibits = request.form.getlist('inhibits')
-    session['inhibits'] = inhibits
+    query['inhibits'] = inhibits
 
     # Get not inhibits
     not_inhibits = request.form.getlist('not_inhibits')
-    session['not_inhibits'] = not_inhibits
+    query['not_inhibits'] = not_inhibits
 
     agents = find_reg_non_regs(inhibits, not_inhibits)
     regs = []
@@ -77,7 +81,12 @@ def channel_search():
         regs.append((agent.name, urls))
 
     # Get results
-    session['response_list'] = regs
+    query['response_list'] = regs
+
+    query_hash = _get_query_hash(query)
+    if query_hash not in query_cache:
+        query_cache[query_hash] = query
+    session['query_hash'] = query_hash
     return redirect('/')
 
 
@@ -85,10 +94,11 @@ def channel_search():
 def index():
     channel_search_form = ChannelSearchForm()
     kwargs = {'channel_search_form': channel_search_form}
-    if session.get('response_list'):
-        response_list = session.pop('response_list', [])
-        old_inhibits_list = session.pop('inhibits', [])
-        old_not_inhibits_list = session.pop('not_inhibits', [])
+    if session.get('query_hash'):
+        query_hash = session.pop('query_hash')
+        response_list = query_cache[query_hash].get('response_list', [])
+        old_inhibits_list = query_cache[query_hash].get('inhibits', [])
+        old_not_inhibits_list = query_cache[query_hash].get('not_inhibits', [])
     else:
         response_list = []
         old_inhibits_list = []
