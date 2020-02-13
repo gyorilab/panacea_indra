@@ -9,17 +9,22 @@ app.config['SECRET_KEY'] = 'dev_key'
 Bootstrap(app)
 
 
-channels = ['A', 'B', 'C']
+with open('../data/gene_list.txt', 'r') as fh:
+    entries = [l.strip().split(' ') for l in fh.readlines()]
+    print(entries)
+    channel_labels = [(e[0], ('%s (%s)' % (e[0], e[1])
+                              if len(e) > 1 else e[0]))
+                      for e in entries]
 
 
 class ChannelSearchForm(Form):
     inhibits = SelectMultipleField(label='Inhibits',
                                    id='inhibit-select',
-                                   choices=[(c, c) for c in channels],
+                                   choices=channel_labels,
                                    validators=[validators.unicode_literals])
     not_inhibits = SelectMultipleField(label='Does not inhibit',
                                        id='not-inhibit-select',
-                                       choices=[(c, c) for c in channels],
+                                       choices=channel_labels,
                                        validators=[validators.unicode_literals])
     submit_button = SubmitField('Search')
 
