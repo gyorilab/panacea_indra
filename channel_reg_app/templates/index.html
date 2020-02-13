@@ -79,10 +79,12 @@
                 <table class="table table-striped">
                 <thead>
                   <td>Name</td>
+                  <td>Links</td>
                 </thead>
                 {% for agent, links in response_list %}
                   <tr>
-                    <td>{{ agent }}
+                      <td>{{ agent }}</td>
+                      <td>
                         {% for ns, url in links %}
                         <a href="{{ url }}" target="_blank">{{ ns }}</a>
                         {% endfor %}
