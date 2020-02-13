@@ -1,23 +1,23 @@
-from flask_wtf import Form
+from flask_wtf import FlaskForm
 from flask_bootstrap import Bootstrap
 from flask import Flask, render_template, request, redirect, session
-from wtforms import SubmitField, StringField, validators, SelectMultipleField
+from wtforms import SubmitField, validators, SelectMultipleField
+from panacea_indra.get_channel_modulators import find_reg_non_regs, \
+    get_agent_urls
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'dev_key'
 
 Bootstrap(app)
 
-
 with open('../data/gene_list.txt', 'r') as fh:
     entries = [l.strip().split(' ') for l in fh.readlines()]
-    print(entries)
     channel_labels = [(e[0], ('%s (%s)' % (e[0], e[1])
                               if len(e) > 1 else e[0]))
                       for e in entries]
 
 
-class ChannelSearchForm(Form):
+class ChannelSearchForm(FlaskForm):
     inhibits = SelectMultipleField(label='Inhibits',
                                    id='inhibit-select',
                                    choices=channel_labels,
@@ -33,17 +33,21 @@ class ChannelSearchForm(Form):
 def channel_search():
     # Get inhibits
     inhibits = request.form.getlist('inhibits')
-    print(inhibits)
     session['inhibits'] = inhibits
 
     # Get not inhibits
     not_inhibits = request.form.getlist('not_inhibits')
     session['not_inhibits'] = not_inhibits
-    print(not_inhibits)
+
+    agents = find_reg_non_regs(inhibits, not_inhibits)
+    regs = []
+    for agent in agents:
+        urls = get_agent_urls(agent)
+        agent_str = '%s %s' % (agent.name, ', '.join(urls))
+        regs.append(agent_str)
 
     # Get results
-    response_list = list(set(inhibits).union(set(not_inhibits)))
-    session['response_list'] = response_list
+    session['response_list'] = regs
     return redirect('/')
 
 
