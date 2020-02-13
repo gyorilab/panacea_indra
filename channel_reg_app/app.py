@@ -1,4 +1,5 @@
 import sys
+from fnvhash import fnv1a_32
 from flask_wtf import FlaskForm
 from flask_bootstrap import Bootstrap
 from flask import Flask, render_template, request, redirect, session
@@ -17,6 +18,30 @@ with open('../data/gene_list.txt', 'r') as fh:
                               if len(e) > 1 else e[0]))
                       for e in entries]
 
+
+def sorted_json_string(json_thing):
+    """Produce a string that is unique to a json's contents."""
+    if isinstance(json_thing, str):
+        return json_thing
+    elif isinstance(json_thing, (tuple, list)):
+        return '[%s]' % (','.join(sorted(sorted_json_string(s)
+                                         for s in json_thing)))
+    elif isinstance(json_thing, dict):
+        return '{%s}' % (','.join(sorted(k + sorted_json_string(v)
+                                         for k, v in json_thing.items())))
+    elif isinstance(json_thing, (int, float)):
+        return str(json_thing)
+    else:
+        raise TypeError('Invalid type: %s' % type(json_thing))
+
+
+def _get_query_hash(query_json):
+    """Create an FNV-1a 32-bit hash from the query json"""
+    return fnv1a_32(sorted_json_string(query_json).encode('utf-8'))
+
+
+
+channels = ['A', 'B', 'C']
 
 class ChannelSearchForm(FlaskForm):
     inhibits = SelectMultipleField(label='inhibit all of...',
