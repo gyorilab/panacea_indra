@@ -1,3 +1,4 @@
+import sys
 from flask_wtf import FlaskForm
 from flask_bootstrap import Bootstrap
 from flask import Flask, render_template, request, redirect, session
@@ -18,15 +19,20 @@ with open('../data/gene_list.txt', 'r') as fh:
 
 
 class ChannelSearchForm(FlaskForm):
-    inhibits = SelectMultipleField(label='Inhibits',
+    inhibits = SelectMultipleField(label='inhibit all of...',
                                    id='inhibit-select',
                                    choices=channel_labels,
                                    validators=[validators.unicode_literals])
-    not_inhibits = SelectMultipleField(label='Does not inhibit',
+    not_inhibits = SelectMultipleField(label='and not inhibit any of...',
                                        id='not-inhibit-select',
                                        choices=channel_labels,
                                        validators=[validators.unicode_literals])
     submit_button = SubmitField('Search')
+
+
+@app.route('/get_reg_stmts', methods=['POST'])
+def get_reg_stmts():
+    pass
 
 
 @app.route('/channel_search', methods=['POST'])
@@ -43,8 +49,7 @@ def channel_search():
     regs = []
     for agent in agents:
         urls = get_agent_urls(agent)
-        agent_str = '%s %s' % (agent.name, ', '.join(urls))
-        regs.append(agent_str)
+        regs.append((agent.name, urls))
 
     # Get results
     session['response_list'] = regs
@@ -70,4 +75,6 @@ def index():
 
 
 if __name__ == '__main__':
-    app.run()
+    if len(sys.argv) > 1:
+        port = int(sys.argv[1])
+    app.run(port=port)

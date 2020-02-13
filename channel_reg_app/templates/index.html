@@ -57,12 +57,12 @@
     })
     </script>
     <div class="row">
-        <div class="col-md-1"></div>
-        <div class="col-md-10" align="center">
+        <div class="col-md-2"></div>
+        <div class="col-md-8" align="left" pad="10px">
             <div id="channel-search-panel" class="panel panel-default">
-                <p>
-                    Enter the names of ion channels.
-                </p>
+                <h2>
+                    Find all compounds that are reported to
+                </h2>
                 <form class="form" method="post" action='channel_search' role="form">
                 {{ wtf.form_field(channel_search_form.inhibits, class_="form-control") }}
                 {{ wtf.form_field(channel_search_form.not_inhibits, class_="form-control") }}
@@ -70,7 +70,7 @@
                 </form>
             </div>
         </div>
-        <div class="col-md-1"></div>
+        <div class="col-md-2"></div>
     </div>
     <div class="row">
         <div class="container">
@@ -79,12 +79,14 @@
                 <table class="table table-striped">
                 <thead>
                   <td>Name</td>
-                  <td>Description</td>
                 </thead>
-                {% for response in response_list %}
+                {% for agent, links in response_list %}
                   <tr>
-                    <td>{{ response }}</td>
-                    <td>The gene is {{ response }}</td>
+                    <td>{{ agent }}
+                        {% for ns, url in links %}
+                        <a href="{{ url }}" target="_blank">{{ ns }}</a>
+                        {% endfor %}
+                    </td>
                   </tr>
                 {% endfor %}
                 </table>
@@ -97,8 +99,10 @@
 <div class="container">
 <div class="well">
 <p class="lead">
-The development of this system was funded under the DARPA Panacea program in
-    the Laboratory of Systems Pharmacology at Harvard Medical School.
+The development of this system was funded under the DARPA Panacea program
+    (HR00111920022) by the <a href="http://indralab.github.io">INDRA team</a>
+    in the <a href="http://hits.harvard.edu">Laboratory of Systems Pharmacology</a>
+    at Harvard Medical School.
 </p>
 <p class="lead">
 Point of contact: Benjamin M. Gyori (benjamin_gyori [AT] hms.harvard.edu)
