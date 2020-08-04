@@ -41,7 +41,6 @@ def _get_query_hash(query_json):
 
 
 
-channels = ['A', 'B', 'C']
 query_cache = {}
 
 
