@@ -11,6 +11,7 @@ from indra.databases import uniprot_client
 from indra.sources import indra_db_rest
 from indra.ontology.bio import bio_ontology
 from indra.databases.uniprot_client import um
+from indra.assemblers.html import HtmlAssembler
 from indra.databases.hgnc_client import get_hgnc_from_mouse, get_hgnc_name
 
 logger = logging.getLogger('receptor_ligand_interactions')
@@ -108,7 +109,6 @@ def mgi_to_hgnc_name(gene_list):
     for genes in gene_list:
         if genes in mouse_gene_name_to_mgi.keys():
             filtered_mgi[genes].add(mouse_gene_name_to_mgi[genes])
-
     hgnc_gene_list = []
     for values in filtered_mgi.values():
         mgi = "".join([str(id) for id in values])
@@ -197,6 +197,9 @@ if __name__ == '__main__':
     stmts_by_hash = read_stmts("stmts_by_hash.pkl", "rb")
 
     final_out = filter_statements(ligand_genes, receptor_genes, stmts_by_hash)
-
     with open('ligand_receptors_indra_statemnts.pkl', 'wb') as fh:
         pickle.dump(final_out, fh)
+
+    html_assembler = HtmlAssembler(final_out)
+    assembled_html_report = html_assembler.make_model()
+    html_assembler.save_model("ligand_receptor_report.html")
