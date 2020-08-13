@@ -12,6 +12,7 @@ from indra.sources import indra_db_rest
 from indra.ontology.bio import bio_ontology
 from indra.databases.uniprot_client import um
 from indra.assemblers.html import HtmlAssembler
+from indra.assemblers.cx.assembler import CxAssembler
 from indra.databases.hgnc_client import get_hgnc_from_mouse, get_hgnc_name
 
 logger = logging.getLogger('receptor_ligand_interactions')
@@ -200,6 +201,12 @@ if __name__ == '__main__':
     with open('ligand_receptors_indra_statemnts.pkl', 'wb') as fh:
         pickle.dump(final_out, fh)
 
+    # Assemble the statements into HTML formatted report
     html_assembler = HtmlAssembler(final_out)
     assembled_html_report = html_assembler.make_model()
     html_assembler.save_model("ligand_receptor_report.html")
+
+    # Assemble the statements into Cytoscape networks
+    cx_assembler = CxAssembler(final_out)
+    assembled_cx_report = cx_assembler.make_model()
+    cx_assembler.save_model("ligand_receptor_report.cx")
