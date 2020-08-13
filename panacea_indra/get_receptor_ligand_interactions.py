@@ -195,4 +195,8 @@ if __name__ == '__main__':
     stmts_by_hash = read_stmts("stmts_by_hash.pkl", "rb")
 
     final_out = filter_statements(ligandGenes, receptorGenes, stmts_by_hash)
-    print(final_out)
+
+    # write final_out to a file
+    out_fh = open("ligand_receptors_indra_statemnts.txt", "w")
+    for hashes in final_out:
+        out_fh.write(str(hashes)+"\t"+str(final_out[hashes])+"\n")
