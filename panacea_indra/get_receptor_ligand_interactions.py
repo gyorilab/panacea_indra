@@ -1,3 +1,6 @@
+import os
+import re
+import sys
 import tqdm
 import pickle
 import logging
@@ -7,15 +10,18 @@ from indra.util import batch_iter
 from indra.databases import uniprot_client
 from indra.sources import indra_db_rest
 from indra.ontology.bio import bio_ontology
+from indra.databases.uniprot_client import um
 
 logger = logging.getLogger('receptor_ligand_interactions')
 
-goa_gaf = '/Users/ben/genewalk/resources/goa_human.gaf'
+goa_gaf = '/Users/sbunga/PycharmProjects/INDRA/ligandReceptorInteractome/goa_human.gaf'
+# set global variable for indradb
+os.environ["INDRA_DB_REST_URL"] = "http://db.indra.bio/"
 
 
 def _load_goa_gaf():
     """Load the gene/GO annotations as a pandas data frame."""
-    #goa_ec = {'EXP', 'IDA', 'IPI', 'IMP', 'IGI', 'IEP', 'HTP', 'HDA', 'HMP',
+    # goa_ec = {'EXP', 'IDA', 'IPI', 'IMP', 'IGI', 'IEP', 'HTP', 'HDA', 'HMP',
     #          'HGI', 'HEP', 'IBA', 'IBD'}
     goa = pd.read_csv(goa_gaf, sep='\t',
                       skiprows=23, dtype=str,
@@ -43,7 +49,7 @@ def _load_goa_gaf():
     goa = goa[~goa['Qualifier'].str.startswith('NOT')]
     # Filter to rows with evidence code corresponding to experimental
     # evidence
-    #goa = goa[goa['Evidence_Code'].isin(goa_ec)]
+    # goa = goa[goa['Evidence_Code'].isin(goa_ec)]
     return goa
 
 
@@ -71,7 +77,7 @@ def download_statements(hashes):
     """Download the INDRA Statements corresponding to a set of hashes.
     """
     stmts_by_hash = {}
-    for group in tqdm.tqdm(batch_iter(hashes, 200), total=int(len(hashes)/200)):
+    for group in tqdm.tqdm(batch_iter(hashes, 200), total=int(len(hashes) / 200)):
         idbp = indra_db_rest.get_statements_by_hash(list(group),
                                                     ev_limit=10)
         for stmt in idbp.statements:
@@ -86,7 +92,6 @@ def get_genes_for_go_ids(go_ids):
         children_go_ids = {ch[1] for ch in bio_ontology.get_children('GO', go_id)}
         all_go_ids.add(go_id)
         all_go_ids |= children_go_ids
-
     df = goa[goa['GO_ID'].isin(all_go_ids)]
     up_ids = sorted(list(set(df['DB_ID'])))
     gene_names = [uniprot_client.get_gene_name(up_id) for up_id in up_ids]
@@ -94,7 +99,61 @@ def get_genes_for_go_ids(go_ids):
     return gene_names
 
 
+def convert_to_mgi(gene_list):
+    """Convert given mouse gene symbols to MGI id's"""
+    mouse_gene_name_to_mgi = {v: um.uniprot_mgi.get(k) for k, v in um.uniprot_gene_name.items()
+                              if k in um.uniprot_mgi}
+    return mouse_gene_name_to_mgi
+
+
+def read_gene_list(infile, mode):
+    gene_list = []
+    try:
+        with open(infile, mode) as FH:
+            for eachGene in FH:
+                gene_list.append(eachGene.strip("\n"))
+        print(gene_list)
+        return gene_list
+
+    except FileNotFoundError:
+        sys.exit("Given file doesn't exist")
+
+
+def filter_statements(ligand_list, receptor_list, statement_hash):
+    """Maps passed in ligand and receptor gene list to the indra statements"""
+    filtered_statements = defaultdict(set)
+    for a, b in zip(ligand_list, receptor_list):
+        for hashes in statement_hash:
+            statement = str(statement_hash[hashes])
+            if re.search(a, statement) and re.search(b, statement):
+                #print(statement)
+                filtered_statements[hashes].add(statement)
+    return filtered_statements
+
+
+def set_wd(x):
+    """Set working directory to the provided path"""
+    try:
+        os.chdir(x)
+        print("Working directory set to: "+os.getcwd())
+    except FileNotFoundError:
+        sys.exit("Please provide a working path.")
+
+
+def read_stmts(infile, mode):
+    with open(infile, mode) as FH:
+        return pickle.load(FH)
+
+
+def write_stmts(stmts_hash, file_name):
+    with open(file_name, "wb") as FH:
+        pickle.dump(stmts_hash, FH, protocol=pickle.HIGHEST_PROTOCOL)
+
+
 if __name__ == '__main__':
+    # Set current working directory
+    set_wd("/Users/sbunga/PycharmProjects/INDRA/ligandReceptorInteractome/")
+
     ligand_terms = ['cytokine activity', 'hormone activity',
                     'growth factor activity']
     receptor_terms = ['signaling receptor activity']
@@ -110,9 +169,18 @@ if __name__ == '__main__':
     logger.info(f'Loaded {len(ligand_genes)} ligand genes')
     logger.info(f'Loaded {len(receptor_genes)} receptor genes')
 
-    df = load_indra_df('/Users/ben/data/db_dump_df.pkl')
+    df = load_indra_df('db_dump_df.pkl')
+    hashes_by_gene_pair = get_hashes_by_gene_pair(df, ligand_genes, receptor_genes)
 
-    hashes_by_gene_pair = get_hashes_by_gene_pair(df, ligand_genes,
-                                                  receptor_genes)
     all_hashes = set.union(*hashes_by_gene_pair.values())
-    stmts_by_hash = download_statements(all_hashes)
+    #stmts_by_hash = download_statements(all_hashes)
+
+    # write stmts as pickle out
+    # write_stmts(stmts_by_hash, "stmts_by_hash.pkl")
+
+    # read statements pkl file
+    stmts_by_hash = read_stmts("stmts_by_hash.pkl", "rb")
+
+    ligandGenes = read_gene_list("ligandGeneSetHuman.txt", "r")
+    receptorGenes = read_gene_list("receptorsGeneSetHuman.txt", "r")
+    filter_statements(ligandGenes, receptorGenes, stmts_by_hash)
