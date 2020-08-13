@@ -129,15 +129,16 @@ def read_gene_list(infile, mode):
         sys.exit("Given file doesn't exist")
 
 
-def filter_statements(ligand_list, receptor_list, statement_hash):
+def filter_statements(ligand_list, receptor_list, statements_by_hash):
     """Maps passed in ligand and receptor gene list to the indra statements"""
-    filtered_statements = defaultdict(set)
-    for a, b in zip(ligand_list, receptor_list):
-        for hashes in statement_hash:
-            statement = str(statement_hash[hashes])
-            if re.search(a, statement) and re.search(b, statement):
-                filtered_statements[hashes].add(statement)
-    return filtered_statements
+    ligands = set(ligand_list)
+    receptors = set(receptor_list)
+    stmts_out = []
+    for stmt_hash, stmt in statements_by_hash.items():
+        stmt_agent_names = {agent.name for agent in stmt.agent_list()}
+        if stmt_agent_names & ligands and stmt_agent_names & receptors:
+            stmts_out.append(stmt)
+    return stmts_out
 
 
 def set_wd(x):
@@ -165,8 +166,8 @@ if __name__ == '__main__':
     raw_ligand_genes = read_gene_list("lookForLigands.txt", "r")
     raw_receptor_genes = read_gene_list("lookForReceptors.txt", "r")
 
-    ligandGenes = mgi_to_hgnc_name(raw_ligand_genes)
-    receptorGenes = mgi_to_hgnc_name(raw_receptor_genes)
+    ligand_genes = mgi_to_hgnc_name(raw_ligand_genes)
+    receptor_genes = mgi_to_hgnc_name(raw_receptor_genes)
     ligand_terms = ['cytokine activity', 'hormone activity',
                     'growth factor activity']
     receptor_terms = ['signaling receptor activity']
@@ -176,14 +177,15 @@ if __name__ == '__main__':
     receptor_go_ids = [bio_ontology.get_id_from_name('GO', term)[1]
                        for term in receptor_terms]
 
-    ligand_genes = get_genes_for_go_ids(ligand_go_ids)
-    receptor_genes = get_genes_for_go_ids(receptor_go_ids)
+    ligand_genes_go = get_genes_for_go_ids(ligand_go_ids)
+    receptor_genes_go = get_genes_for_go_ids(receptor_go_ids)
 
-    logger.info(f'Loaded {len(ligand_genes)} ligand genes')
-    logger.info(f'Loaded {len(receptor_genes)} receptor genes')
+    logger.info(f'Loaded {len(ligand_genes_go)} ligand genes')
+    logger.info(f'Loaded {len(receptor_genes_go)} receptor genes')
 
     df = load_indra_df('db_dump_df.pkl')
-    hashes_by_gene_pair = get_hashes_by_gene_pair(df, ligand_genes, receptor_genes)
+    hashes_by_gene_pair = get_hashes_by_gene_pair(df, ligand_genes_go,
+                                                  receptor_genes_go)
 
     all_hashes = set.union(*hashes_by_gene_pair.values())
     #stmts_by_hash = download_statements(all_hashes)
@@ -194,9 +196,7 @@ if __name__ == '__main__':
     # read statements pkl file
     stmts_by_hash = read_stmts("stmts_by_hash.pkl", "rb")
 
-    final_out = filter_statements(ligandGenes, receptorGenes, stmts_by_hash)
+    final_out = filter_statements(ligand_genes, receptor_genes, stmts_by_hash)
 
-    # write final_out to a file
-    out_fh = open("ligand_receptors_indra_statemnts.txt", "w")
-    for hashes in final_out:
-        out_fh.write(str(hashes)+"\t"+str(final_out[hashes])+"\n")
+    with open('ligand_receptors_indra_statemnts.pkl', 'wb') as fh:
+        pickle.dump(final_out, fh)
