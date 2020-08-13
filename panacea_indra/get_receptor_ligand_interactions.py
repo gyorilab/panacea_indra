@@ -11,6 +11,7 @@ from indra.databases import uniprot_client
 from indra.sources import indra_db_rest
 from indra.ontology.bio import bio_ontology
 from indra.databases.uniprot_client import um
+from indra.databases.hgnc_client import get_hgnc_from_mouse, get_hgnc_name
 
 logger = logging.getLogger('receptor_ligand_interactions')
 
@@ -99,11 +100,21 @@ def get_genes_for_go_ids(go_ids):
     return gene_names
 
 
-def convert_to_mgi(gene_list):
-    """Convert given mouse gene symbols to MGI id's"""
+def mgi_to_hgnc_name(gene_list):
+    """Convert given mouse gene symbols to HGNC equivalent symbols"""
     mouse_gene_name_to_mgi = {v: um.uniprot_mgi.get(k) for k, v in um.uniprot_gene_name.items()
                               if k in um.uniprot_mgi}
-    return mouse_gene_name_to_mgi
+    filtered_mgi = defaultdict(set)
+    for genes in gene_list:
+        if genes in mouse_gene_name_to_mgi.keys():
+            filtered_mgi[genes].add(mouse_gene_name_to_mgi[genes])
+
+    hgnc_gene_list = []
+    for values in filtered_mgi.values():
+        mgi = "".join([str(id) for id in values])
+        hgnc_id = get_hgnc_from_mouse(mgi)
+        hgnc_gene_list.append(str(get_hgnc_name(hgnc_id)))
+    return hgnc_gene_list
 
 
 def read_gene_list(infile, mode):
@@ -112,7 +123,6 @@ def read_gene_list(infile, mode):
         with open(infile, mode) as FH:
             for eachGene in FH:
                 gene_list.append(eachGene.strip("\n"))
-        print(gene_list)
         return gene_list
 
     except FileNotFoundError:
@@ -126,7 +136,6 @@ def filter_statements(ligand_list, receptor_list, statement_hash):
         for hashes in statement_hash:
             statement = str(statement_hash[hashes])
             if re.search(a, statement) and re.search(b, statement):
-                #print(statement)
                 filtered_statements[hashes].add(statement)
     return filtered_statements
 
@@ -153,7 +162,11 @@ def write_stmts(stmts_hash, file_name):
 if __name__ == '__main__':
     # Set current working directory
     set_wd("/Users/sbunga/PycharmProjects/INDRA/ligandReceptorInteractome/")
+    raw_ligand_genes = read_gene_list("lookForLigands.txt", "r")
+    raw_receptor_genes = read_gene_list("lookForReceptors.txt", "r")
 
+    ligandGenes = mgi_to_hgnc_name(raw_ligand_genes)
+    receptorGenes = mgi_to_hgnc_name(raw_receptor_genes)
     ligand_terms = ['cytokine activity', 'hormone activity',
                     'growth factor activity']
     receptor_terms = ['signaling receptor activity']
@@ -181,6 +194,5 @@ if __name__ == '__main__':
     # read statements pkl file
     stmts_by_hash = read_stmts("stmts_by_hash.pkl", "rb")
 
-    ligandGenes = read_gene_list("ligandGeneSetHuman.txt", "r")
-    receptorGenes = read_gene_list("receptorsGeneSetHuman.txt", "r")
-    filter_statements(ligandGenes, receptorGenes, stmts_by_hash)
+    final_out = filter_statements(ligandGenes, receptorGenes, stmts_by_hash)
+    print(final_out)
