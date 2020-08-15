@@ -130,16 +130,44 @@ def read_gene_list(infile, mode):
         sys.exit("Given file doesn't exist")
 
 
+def _filter_complex(stmt, lg, rg):
+    """Filter out the genes from Complex statements which
+    are not present in the given ligand/receptor list"""
+    stmt.members = [agent for agent in stmt.members
+                    if agent.name in lg or agent.name in rg]
+    return stmt
+
+
 def filter_statements(ligand_list, receptor_list, statements_by_hash):
     """Maps passed in ligand and receptor gene list to the indra statements"""
     ligands = set(ligand_list)
     receptors = set(receptor_list)
     stmts_out = []
     for stmt_hash, stmt in statements_by_hash.items():
+        if re.match("Complex", str(stmt)):
+            stmt = _filter_complex(stmt, ligands, receptors)
         stmt_agent_names = {agent.name for agent in stmt.agent_list()}
         if stmt_agent_names & ligands and stmt_agent_names & receptors:
             stmts_out.append(stmt)
     return stmts_out
+
+
+def html_assembler(indra_stmts, fname):
+    """Assemble INDRA statements into a HTML report"""
+    html_assembler = HtmlAssembler(indra_stmts)
+    assembled_html_report = html_assembler.make_model()
+    html_assembler.save_model(fname)
+    return assembled_html_report
+
+
+def cx_assembler(indra_stmts, fname):
+    """Assemble INDRA statements into a CX report"""
+    cx_assembler = CxAssembler(indra_stmts)
+    assembled_cx_report = cx_assembler.make_model()
+    cx_assembler.save_model(fname)
+    ndex_network_id = cx_assembler.upload_model(ndex_cred=None,
+                                                private=True, style='default')
+    return assembled_cx_report, ndex_network_id
 
 
 def set_wd(x):
@@ -189,7 +217,7 @@ if __name__ == '__main__':
                                                   receptor_genes_go)
 
     all_hashes = set.union(*hashes_by_gene_pair.values())
-    #stmts_by_hash = download_statements(all_hashes)
+    # stmts_by_hash = download_statements(all_hashes)
 
     # write stmts as pickle out
     # write_stmts(stmts_by_hash, "stmts_by_hash.pkl")
@@ -201,12 +229,12 @@ if __name__ == '__main__':
     with open('ligand_receptors_indra_statemnts.pkl', 'wb') as fh:
         pickle.dump(final_out, fh)
 
-    # Assemble the statements into HTML formatted report
-    html_assembler = HtmlAssembler(final_out)
-    assembled_html_report = html_assembler.make_model()
-    html_assembler.save_model("ligand_receptor_report.html")
+    # Assemble the statements into HTML formatted report and save into a file
+    assembled_html_report = html_assembler(final_out, fname="ligand_receptor_report.html")
 
-    # Assemble the statements into Cytoscape networks
-    cx_assembler = CxAssembler(final_out)
-    assembled_cx_report = cx_assembler.make_model()
-    cx_assembler.save_model("ligand_receptor_report.cx")
+    # Assemble the statements into Cytoscape networks and save the file into the disk
+    # Optional: Please configure the indra config file in ~/.config/indra/config.ini with
+    # NDEx credentials to upload the networks into the server
+    cx_assembler_report, ndex_network_id = cx_assembler(final_out,
+                                                        fname="ligand_receptor_report.cx")
+    print(ndex_network_id)
