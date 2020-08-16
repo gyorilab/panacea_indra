@@ -4,6 +4,7 @@ import sys
 import tqdm
 import pickle
 import logging
+import openpyxl
 import pandas as pd
 from collections import defaultdict
 from indra.util import batch_iter
@@ -118,6 +119,38 @@ def mgi_to_hgnc_name(gene_list):
     return hgnc_gene_list
 
 
+def _process_sheets(wb, sheet_names):
+    if len(sheet_names) == 2:
+        ligand = wb[sheet_names[0]]
+        receptor = wb[sheet_names[1]]
+        ligand_list = [genes[0].value for genes in ligand]
+        receptor_list = [genes[0].value for genes in receptor]
+        return ligand_list, receptor_list
+    elif len(sheet_names) == 1 and wb[sheet_names[0]].max_column == 2:
+        sheet = sheet_names[0]
+        ligand_list = [i[0].value for i in wb[sheet]]
+        receptor_list = [i[1].value for i in wb[sheet]]
+        return ligand_list, receptor_list
+    else:
+        return None, None
+
+
+def read_workbook(workbook):
+    """ This function takes Excel workbook as an input and
+    returns ligand and receptor gene list respectively.
+    Input: Excel workbook with single(2 columns) or two sheets
+    Condition: considers first column/sheet as ligand genes and second
+    column/shet as receptor genes
+    """
+    wb = openpyxl.load_workbook(workbook)
+    sheet_names = wb.sheetnames
+    ligand_list, receptor_list = _process_sheets(wb, sheet_names)
+    if str(ligand_list) and str(receptor_list) == 'None':
+        sys.exit("Error parsing the workbook")
+    else:
+        return ligand_list, receptor_list
+
+
 def read_gene_list(infile, mode):
     gene_list = []
     try:
@@ -192,8 +225,7 @@ def write_stmts(stmts_hash, file_name):
 if __name__ == '__main__':
     # Set current working directory
     set_wd("/Users/sbunga/PycharmProjects/INDRA/ligandReceptorInteractome/")
-    raw_ligand_genes = read_gene_list("lookForLigands.txt", "r")
-    raw_receptor_genes = read_gene_list("lookForReceptors.txt", "r")
+    raw_ligand_genes, raw_receptor_genes = read_workbook('neuroimmuneGeneList.xlsx')
 
     ligand_genes = mgi_to_hgnc_name(raw_ligand_genes)
     receptor_genes = mgi_to_hgnc_name(raw_receptor_genes)
@@ -217,13 +249,13 @@ if __name__ == '__main__':
                                                   receptor_genes_go)
 
     all_hashes = set.union(*hashes_by_gene_pair.values())
-    # stmts_by_hash = download_statements(all_hashes)
+    stmts_by_hash = download_statements(all_hashes)
 
     # write stmts as pickle out
     # write_stmts(stmts_by_hash, "stmts_by_hash.pkl")
 
     # read statements pkl file
-    stmts_by_hash = read_stmts("stmts_by_hash.pkl", "rb")
+    # stmts_by_hash = read_stmts("stmts_by_hash.pkl", "rb")
 
     final_out = filter_statements(ligand_genes, receptor_genes, stmts_by_hash)
     with open('ligand_receptors_indra_statemnts.pkl', 'wb') as fh:
