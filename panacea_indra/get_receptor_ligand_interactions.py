@@ -23,6 +23,11 @@ goa_gaf = '/Users/sbunga/PycharmProjects/INDRA/ligandReceptorInteractome/goa_hum
 os.environ["INDRA_DB_REST_URL"] = "http://db.indra.bio/"
 
 
+mouse_gene_name_to_mgi = {v: um.uniprot_mgi.get(k)
+                          for k, v in um.uniprot_gene_name.items()
+                          if k in um.uniprot_mgi}
+
+
 def _load_goa_gaf():
     """Load the gene/GO annotations as a pandas data frame."""
     # goa_ec = {'EXP', 'IDA', 'IPI', 'IMP', 'IGI', 'IEP', 'HTP', 'HDA', 'HMP',
@@ -105,17 +110,12 @@ def get_genes_for_go_ids(go_ids):
 
 def mgi_to_hgnc_name(gene_list):
     """Convert given mouse gene symbols to HGNC equivalent symbols"""
-    mouse_gene_name_to_mgi = {v: um.uniprot_mgi.get(k) for k, v in um.uniprot_gene_name.items()
-                              if k in um.uniprot_mgi}
-    filtered_mgi = defaultdict(set)
-    for genes in gene_list:
-        if genes in mouse_gene_name_to_mgi.keys():
-            filtered_mgi[genes].add(mouse_gene_name_to_mgi[genes])
+    filtered_mgi = {mouse_gene_name_to_mgi[gene] for gene in gene_list
+                    if gene in mouse_gene_name_to_mgi}
     hgnc_gene_list = []
-    for values in filtered_mgi.values():
-        mgi = "".join([str(id) for id in values])
-        hgnc_id = get_hgnc_from_mouse(mgi)
-        hgnc_gene_list.append(str(get_hgnc_name(hgnc_id)))
+    for mgi_id in filtered_mgi:
+        hgnc_id = get_hgnc_from_mouse(mgi_id)
+        hgnc_gene_list.append(get_hgnc_name(hgnc_id))
     return hgnc_gene_list
 
 
