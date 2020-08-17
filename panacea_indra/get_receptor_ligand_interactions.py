@@ -1,13 +1,14 @@
 import os
-import re
 import sys
 import tqdm
 import pickle
 import logging
+import datetime
 import openpyxl
 import pandas as pd
 from collections import defaultdict
 from indra.util import batch_iter
+from indra.statements import Complex
 from indra.databases import uniprot_client
 from indra.sources import indra_db_rest
 from indra.ontology.bio import bio_ontology
@@ -16,11 +17,13 @@ from indra.assemblers.html import HtmlAssembler
 from indra.assemblers.cx.assembler import CxAssembler
 from indra.databases.hgnc_client import get_hgnc_from_mouse, get_hgnc_name
 
-logger = logging.getLogger('receptor_ligand_interactions')
 
-goa_gaf = '/Users/sbunga/PycharmProjects/INDRA/ligandReceptorInteractome/goa_human.gaf'
-# set global variable for indradb
-os.environ["INDRA_DB_REST_URL"] = "http://db.indra.bio/"
+GO_ANNOTATIONS = '/Users/ben/genewalk/resources/goa_human.gaf'
+INDRA_DB_PKL = '/Users/ben/data/db_dump_df.pkl'
+DATA_SPREADSHEET = 'Neuroimmune gene list .xlsx'
+
+
+logger = logging.getLogger('receptor_ligand_interactions')
 
 
 mouse_gene_name_to_mgi = {v: um.uniprot_mgi.get(k)
@@ -32,7 +35,7 @@ def _load_goa_gaf():
     """Load the gene/GO annotations as a pandas data frame."""
     # goa_ec = {'EXP', 'IDA', 'IPI', 'IMP', 'IGI', 'IEP', 'HTP', 'HDA', 'HMP',
     #          'HGI', 'HEP', 'IBA', 'IBD'}
-    goa = pd.read_csv(goa_gaf, sep='\t',
+    goa = pd.read_csv(GO_ANNOTATIONS, sep='\t',
                       skiprows=23, dtype=str,
                       header=None,
                       names=['DB',
@@ -112,11 +115,43 @@ def mgi_to_hgnc_name(gene_list):
     """Convert given mouse gene symbols to HGNC equivalent symbols"""
     filtered_mgi = {mouse_gene_name_to_mgi[gene] for gene in gene_list
                     if gene in mouse_gene_name_to_mgi}
-    hgnc_gene_list = []
+    hgnc_gene_set = set()
     for mgi_id in filtered_mgi:
         hgnc_id = get_hgnc_from_mouse(mgi_id)
-        hgnc_gene_list.append(get_hgnc_name(hgnc_id))
-    return hgnc_gene_list
+        hgnc_gene_set.add(get_hgnc_name(hgnc_id))
+    return hgnc_gene_set
+
+
+def fix_dates(gene_names):
+    replacements = {
+        datetime.datetime(2020, 3, 7, 0, 0): 'March7',
+        datetime.datetime(2020, 3, 2, 0, 0): 'March2',
+        datetime.datetime(2020, 3, 4, 0, 0): 'March4',
+        datetime.datetime(2020, 3, 5, 0, 0): 'March5',
+        datetime.datetime(2020, 3, 6, 0, 0): 'March6',
+        datetime.datetime(2020, 3, 9, 0, 0): 'March9',
+        datetime.datetime(2020, 3, 8, 0, 0): 'March8',
+        datetime.datetime(2020, 3, 11, 0, 0): 'Mar11',
+        datetime.datetime(2020, 9, 1, 0, 0): 'Sept1',
+        datetime.datetime(2020, 9, 2, 0, 0): 'Sept2',
+        datetime.datetime(2020, 9, 3, 0, 0): 'Sept3',
+        datetime.datetime(2020, 9, 4, 0, 0): 'Sept4',
+        datetime.datetime(2020, 9, 5, 0, 0): 'Sept5',
+        datetime.datetime(2020, 9, 6, 0, 0): 'Sept6',
+        datetime.datetime(2020, 9, 7, 0, 0): 'Sept7',
+        datetime.datetime(2020, 9, 8, 0, 0): 'Sept8',
+        datetime.datetime(2020, 9, 9, 0, 0): 'Sept9',
+        datetime.datetime(2020, 9, 10, 0, 0): 'Sept10',
+        datetime.datetime(2020, 9, 11, 0, 0): 'Sept11',
+        datetime.datetime(2020, 9, 15, 0, 0): 'Sept15',
+    }
+    fixed_gene_names = set()
+    for gene_name in gene_names:
+        if isinstance(gene_name, datetime.datetime):
+            fixed_gene_names.add(replacements[gene_name])
+        else:
+            fixed_gene_names.add(gene_name)
+    return fixed_gene_names
 
 
 def read_workbook(workbook):
@@ -127,8 +162,9 @@ def read_workbook(workbook):
     column/shet as receptor genes
     """
     wb = openpyxl.load_workbook(workbook)
-    ligands = [row[0].value for row in wb['logFC>0.25']][1:]
-    receptors = [row[0].value for row in wb['RPKM > 1.5 cfiber']][1:]
+    ligands = fix_dates(set([row[0].value for row in wb['logFC>0.25']][1:]))
+    receptors = fix_dates(set([row[0].value
+                               for row in wb['RPKM > 1.5 cfiber']][1:]))
     return ligands, receptors
 
 
@@ -144,6 +180,13 @@ def read_gene_list(infile, mode):
         sys.exit("Given file doesn't exist")
 
 
+def filter_statements(stmts, ligands, receptors):
+    for stmt in stmts:
+        if isinstance(stmt, Complex):
+            _filter_complex(stmt, ligands, receptors)
+    return stmts
+
+
 def _filter_complex(stmt, lg, rg):
     """Filter out the genes from Complex statements which
     are not present in the given ligand/receptor list"""
@@ -152,23 +195,10 @@ def _filter_complex(stmt, lg, rg):
     return stmt
 
 
-def filter_statements(ligand_list, receptor_list, statements_by_hash):
-    """Maps passed in ligand and receptor gene list to the indra statements"""
-    ligands = set(ligand_list)
-    receptors = set(receptor_list)
-    stmts_out = []
-    for stmt_hash, stmt in statements_by_hash.items():
-        if re.match("Complex", str(stmt)):
-            stmt = _filter_complex(stmt, ligands, receptors)
-        stmt_agent_names = {agent.name for agent in stmt.agent_list()}
-        if stmt_agent_names & ligands and stmt_agent_names & receptors:
-            stmts_out.append(stmt)
-    return stmts_out
-
-
 def html_assembler(indra_stmts, fname):
     """Assemble INDRA statements into a HTML report"""
-    html_assembler = HtmlAssembler(indra_stmts)
+    html_assembler = HtmlAssembler(indra_stmts,
+                                   db_rest_url='https://db.indra.bio')
     assembled_html_report = html_assembler.make_model()
     html_assembler.save_model(fname)
     return assembled_html_report
@@ -205,8 +235,8 @@ def write_stmts(stmts_hash, file_name):
 
 if __name__ == '__main__':
     # Set current working directory
-    set_wd("/Users/sbunga/PycharmProjects/INDRA/ligandReceptorInteractome/")
-    raw_ligand_genes, raw_receptor_genes = read_workbook('neuroimmuneGeneList.xlsx')
+    #set_wd("/Users/sbunga/PycharmProjects/INDRA/ligandReceptorInteractome/")
+    raw_ligand_genes, raw_receptor_genes = read_workbook(DATA_SPREADSHEET)
 
     ligand_genes = mgi_to_hgnc_name(raw_ligand_genes)
     receptor_genes = mgi_to_hgnc_name(raw_receptor_genes)
@@ -222,12 +252,15 @@ if __name__ == '__main__':
     ligand_genes_go = get_genes_for_go_ids(ligand_go_ids)
     receptor_genes_go = get_genes_for_go_ids(receptor_go_ids)
 
-    logger.info(f'Loaded {len(ligand_genes_go)} ligand genes')
-    logger.info(f'Loaded {len(receptor_genes_go)} receptor genes')
+    ligands_in_data = ligand_genes & ligand_genes_go
+    receptors_in_data = receptor_genes & receptor_genes_go
 
-    df = load_indra_df('db_dump_df.pkl')
-    hashes_by_gene_pair = get_hashes_by_gene_pair(df, ligand_genes_go,
-                                                  receptor_genes_go)
+    logger.info(f'Loaded {len(ligands_in_data)} ligand genes from data')
+    logger.info(f'Loaded {len(receptors_in_data)} receptor genes from data')
+
+    df = load_indra_df(INDRA_DB_PKL)
+    hashes_by_gene_pair = get_hashes_by_gene_pair(df, ligands_in_data,
+                                                  receptors_in_data)
 
     all_hashes = set.union(*hashes_by_gene_pair.values())
     stmts_by_hash = download_statements(all_hashes)
@@ -237,17 +270,18 @@ if __name__ == '__main__':
 
     # read statements pkl file
     # stmts_by_hash = read_stmts("stmts_by_hash.pkl", "rb")
-
-    final_out = filter_statements(ligand_genes, receptor_genes, stmts_by_hash)
+    final_out = filter_statements(list(stmts_by_hash.values()),
+                                  ligands_in_data, receptors_in_data)
     with open('ligand_receptors_indra_statemnts.pkl', 'wb') as fh:
         pickle.dump(final_out, fh)
 
     # Assemble the statements into HTML formatted report and save into a file
-    assembled_html_report = html_assembler(final_out, fname="ligand_receptor_report.html")
+    assembled_html_report = html_assembler(final_out,
+                                           fname="ligand_receptor_report.html")
 
     # Assemble the statements into Cytoscape networks and save the file into the disk
     # Optional: Please configure the indra config file in ~/.config/indra/config.ini with
     # NDEx credentials to upload the networks into the server
-    cx_assembler_report, ndex_network_id = cx_assembler(final_out,
-                                                        fname="ligand_receptor_report.cx")
+    cx_assembler_report, ndex_network_id = \
+        cx_assembler(final_out, fname="ligand_receptor_report.cx")
     print(ndex_network_id)
