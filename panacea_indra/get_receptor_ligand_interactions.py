@@ -119,22 +119,6 @@ def mgi_to_hgnc_name(gene_list):
     return hgnc_gene_list
 
 
-def _process_sheets(wb, sheet_names):
-    if len(sheet_names) == 2:
-        ligand = wb[sheet_names[0]]
-        receptor = wb[sheet_names[1]]
-        ligand_list = [genes[0].value for genes in ligand]
-        receptor_list = [genes[0].value for genes in receptor]
-        return ligand_list, receptor_list
-    elif len(sheet_names) == 1 and wb[sheet_names[0]].max_column == 2:
-        sheet = sheet_names[0]
-        ligand_list = [i[0].value for i in wb[sheet]]
-        receptor_list = [i[1].value for i in wb[sheet]]
-        return ligand_list, receptor_list
-    else:
-        return None, None
-
-
 def read_workbook(workbook):
     """ This function takes Excel workbook as an input and
     returns ligand and receptor gene list respectively.
@@ -143,12 +127,9 @@ def read_workbook(workbook):
     column/shet as receptor genes
     """
     wb = openpyxl.load_workbook(workbook)
-    sheet_names = wb.sheetnames
-    ligand_list, receptor_list = _process_sheets(wb, sheet_names)
-    if str(ligand_list) and str(receptor_list) == 'None':
-        sys.exit("Error parsing the workbook")
-    else:
-        return ligand_list, receptor_list
+    ligands = [row[0].value for row in wb['logFC>0.25']][1:]
+    receptors = [row[0].value for row in wb['RPKM > 1.5 cfiber']][1:]
+    return ligands, receptors
 
 
 def read_gene_list(infile, mode):
