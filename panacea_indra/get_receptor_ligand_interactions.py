@@ -184,10 +184,10 @@ def read_gene_list(infile, mode):
         sys.exit("Given file doesn't exist")
 
 
-def filter_statements(stmts, ligands, receptors):
-    for stmt in stmts:
+def filter_complex_statements(stmts, ligands, receptors):
+    for index, stmt in enumerate(stmts):
         if isinstance(stmt, Complex):
-            _filter_complex(stmt, ligands, receptors)
+            stmts[index] = _filter_complex(stmt, ligands, receptors)
     return stmts
 
 
@@ -279,8 +279,8 @@ if __name__ == '__main__':
     stmts_by_hash = download_statements(all_hashes)
 
     # filter Complex statements
-    final_out = filter_statements(list(stmts_by_hash.values()),
-                                  ligands_in_data, receptors_in_data)
+    final_out = filter_complex_statements(list(stmts_by_hash.values()),
+                                          ligands_in_data, receptors_in_data)
 
     # Filter incorrect curations
     db_curations = get_curations()
@@ -291,22 +291,27 @@ if __name__ == '__main__':
     op = process_from_web()
     omnipath_stmts = op.statements
 
-    op_filtered_stmts = filter_op_stmts(omnipath_stmts, ligand_genes_go,
-                                        receptor_genes_go)
-
-    op_curated = ac.filter_by_curation(op_filtered_stmts,
-                                       curations=db_curations)
-
     # run de-duplication and merge omnipath/INDRA statements
-    indra_op_stmts = ac.run_preassembly(indra_filtered_stmts + op_curated)
+    indra_op_stmts = ac.run_preassembly(indra_filtered_stmts + omnipath_stmts)
+
+    # Filter statements which are not ligands/receptors
+    filtered_stmts = filter_op_stmts(indra_op_stmts, ligands_in_data,
+                                     receptors_in_data)
+
+    # Filter complex statements from the merged list
+    filter_complex = filter_complex_statements(filtered_stmts,
+                                               ligands_in_data, receptors_in_data)
+    # check for incorrect statements
+    indra_op_filtered = ac.filter_by_curation(filter_complex, curations=db_curations)
+
 
     # Assemble the statements into HTML formatted report and save into a file
     indra_op_html_report = \
-        html_assembler(indra_op_stmts, fname="indra_omnipath_report.html")
+        html_assembler(indra_op_filtered, fname="indra_omnipath_report.html")
 
     """ Assemble the statements into Cytoscape networks and save the file into the disk
         Optional: Please configure the indra config file in ~/.config/indra/config.ini with
         NDEx credentials to upload the networks into the server """
     indra_op_cx_report, ndex_network_id = \
-        cx_assembler(indra_op_stmts, fname="indra_omnipath_report.cx")
+        cx_assembler(indra_op_filtered, fname="indra_omnipath_report.cx")
     print(ndex_network_id)
