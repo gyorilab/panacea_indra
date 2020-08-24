@@ -6,21 +6,25 @@ import logging
 import datetime
 import openpyxl
 import pandas as pd
-from collections import defaultdict
+from itertools import chain
 from indra.util import batch_iter
+from collections import defaultdict
 from indra.statements import Complex
-from indra.databases import uniprot_client
 from indra.sources import indra_db_rest
+import indra.tools.assemble_corpus as ac
+from indra.databases import uniprot_client
 from indra.ontology.bio import bio_ontology
 from indra.databases.uniprot_client import um
 from indra.assemblers.html import HtmlAssembler
+from indra.sources.omnipath import process_from_web
 from indra.assemblers.cx.assembler import CxAssembler
+from indra_db.client.principal.curation import get_curations
 from indra.databases.hgnc_client import get_hgnc_from_mouse, get_hgnc_name
 
 
-GO_ANNOTATIONS = '/Users/ben/genewalk/resources/goa_human.gaf'
-INDRA_DB_PKL = '/Users/ben/data/db_dump_df.pkl'
-DATA_SPREADSHEET = 'Neuroimmune gene list .xlsx'
+GO_ANNOTATIONS = '/Users/sbunga/PycharmProjects/INDRA/ligandReceptorInteractome/goa_human.gaf'
+INDRA_DB_PKL = '/Users/sbunga/PycharmProjects/INDRA/ligandReceptorInteractome/db_dump_df.pkl'
+DATA_SPREADSHEET = '/Users/sbunga/PycharmProjects/INDRA/ligandReceptorInteractome/neuroimmuneGeneList2.xlsx'
 
 
 logger = logging.getLogger('receptor_ligand_interactions')
@@ -195,6 +199,15 @@ def _filter_complex(stmt, lg, rg):
     return stmt
 
 
+def filter_op_stmts(op_stmts, lg_go, rg_go):
+    """ Filter out the statements which are not ligand and receptor """
+    filtered_list = []
+    for stmt in op_stmts:
+        filtered_list.append([stmt for agents in stmt.agent_list()
+                              if agents.name in lg_go or agents.name in rg_go])
+    return list(chain(*filtered_list))
+
+
 def html_assembler(indra_stmts, fname):
     """Assemble INDRA statements into a HTML report"""
     html_assembler = HtmlAssembler(indra_stmts,
@@ -235,7 +248,7 @@ def write_stmts(stmts_hash, file_name):
 
 if __name__ == '__main__':
     # Set current working directory
-    #set_wd("/Users/sbunga/PycharmProjects/INDRA/ligandReceptorInteractome/")
+    set_wd("/Users/sbunga/PycharmProjects/INDRA/ligandReceptorInteractome/output-test")
     raw_ligand_genes, raw_receptor_genes = read_workbook(DATA_SPREADSHEET)
 
     ligand_genes = mgi_to_hgnc_name(raw_ligand_genes)
@@ -265,23 +278,35 @@ if __name__ == '__main__':
     all_hashes = set.union(*hashes_by_gene_pair.values())
     stmts_by_hash = download_statements(all_hashes)
 
-    # write stmts as pickle out
-    # write_stmts(stmts_by_hash, "stmts_by_hash.pkl")
-
-    # read statements pkl file
-    # stmts_by_hash = read_stmts("stmts_by_hash.pkl", "rb")
+    # filter Complex statements
     final_out = filter_statements(list(stmts_by_hash.values()),
                                   ligands_in_data, receptors_in_data)
-    with open('ligand_receptors_indra_statemnts.pkl', 'wb') as fh:
-        pickle.dump(final_out, fh)
+
+    # Filter incorrect curations
+    db_curations = get_curations()
+    indra_filtered_stmts = ac.filter_by_curation(final_out, curations=db_curations)
+
+    """ Fetch omnipath database biomolecular interactions and
+    process them into INDRA statements """
+    op = process_from_web()
+    omnipath_stmts = op.statements
+
+    op_filtered_stmts = filter_op_stmts(omnipath_stmts, ligand_genes_go,
+                                        receptor_genes_go)
+
+    op_curated = ac.filter_by_curation(op_filtered_stmts,
+                                       curations=db_curations)
+
+    # run de-duplication and merge omnipath/INDRA statements
+    indra_op_stmts = ac.run_preassembly(indra_filtered_stmts + op_curated)
 
     # Assemble the statements into HTML formatted report and save into a file
-    assembled_html_report = html_assembler(final_out,
-                                           fname="ligand_receptor_report.html")
+    indra_op_html_report = \
+        html_assembler(indra_op_stmts, fname="indra_omnipath_report.html")
 
-    # Assemble the statements into Cytoscape networks and save the file into the disk
-    # Optional: Please configure the indra config file in ~/.config/indra/config.ini with
-    # NDEx credentials to upload the networks into the server
-    cx_assembler_report, ndex_network_id = \
-        cx_assembler(final_out, fname="ligand_receptor_report.cx")
+    """ Assemble the statements into Cytoscape networks and save the file into the disk
+        Optional: Please configure the indra config file in ~/.config/indra/config.ini with
+        NDEx credentials to upload the networks into the server """
+    indra_op_cx_report, ndex_network_id = \
+        cx_assembler(indra_op_stmts, fname="indra_omnipath_report.cx")
     print(ndex_network_id)
