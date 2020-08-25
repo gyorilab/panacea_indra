@@ -6,7 +6,6 @@ import logging
 import datetime
 import openpyxl
 import pandas as pd
-from itertools import chain
 from indra.util import batch_iter
 from collections import defaultdict
 from indra.statements import Complex
@@ -185,9 +184,10 @@ def read_gene_list(infile, mode):
 
 
 def filter_complex_statements(stmts, ligands, receptors):
-    for index, stmt in enumerate(stmts):
+    for stmt in stmts:
         if isinstance(stmt, Complex):
-            stmts[index] = _filter_complex(stmt, ligands, receptors)
+            # Statement updated by reference here
+            _filter_complex(stmt, ligands, receptors)
     return stmts
 
 
@@ -199,13 +199,14 @@ def _filter_complex(stmt, lg, rg):
     return stmt
 
 
-def filter_op_stmts(op_stmts, lg_go, rg_go):
+def filter_op_stmts(op_stmts, lg, rg):
     """ Filter out the statements which are not ligand and receptor """
-    filtered_list = []
-    for stmt in op_stmts:
-        filtered_list.append([stmt for agents in stmt.agent_list()
-                              if agents.name in lg_go or agents.name in rg_go])
-    return list(chain(*filtered_list))
+    logger.info(f'Filtering {len(op_stmts)} to ligand-receptor interactions')
+    filtered_stmts = [stmt for stmt in op_stmts if
+                      (any(a.name in lg for a in stmt.agent_list())
+                       and any(a.name in rg for a in stmt.agent_list()))]
+    logger.info(f'{len(filtered_stmts)} left after filter')
+    return filtered_stmts
 
 
 def html_assembler(indra_stmts, fname):
@@ -236,19 +237,12 @@ def set_wd(x):
         sys.exit("Please provide a working path.")
 
 
-def read_stmts(infile, mode):
-    with open(infile, mode) as FH:
-        return pickle.load(FH)
-
-
-def write_stmts(stmts_hash, file_name):
-    with open(file_name, "wb") as FH:
-        pickle.dump(stmts_hash, FH, protocol=pickle.HIGHEST_PROTOCOL)
-
-
 if __name__ == '__main__':
     # Set current working directory
     set_wd("/Users/sbunga/PycharmProjects/INDRA/ligandReceptorInteractome/output-test")
+
+    # Collect lists of receptors and ligands based on GO annotations and
+    # by reading the data
     raw_ligand_genes, raw_receptor_genes = read_workbook(DATA_SPREADSHEET)
 
     ligand_genes = mgi_to_hgnc_name(raw_ligand_genes)
@@ -271,6 +265,7 @@ if __name__ == '__main__':
     logger.info(f'Loaded {len(ligands_in_data)} ligand genes from data')
     logger.info(f'Loaded {len(receptors_in_data)} receptor genes from data')
 
+    # Now get INDRA DB Statements for the receptor-ligand pairs
     df = load_indra_df(INDRA_DB_PKL)
     hashes_by_gene_pair = get_hashes_by_gene_pair(df, ligands_in_data,
                                                   receptors_in_data)
@@ -279,39 +274,38 @@ if __name__ == '__main__':
     stmts_by_hash = download_statements(all_hashes)
 
     # filter Complex statements
-    final_out = filter_complex_statements(list(stmts_by_hash.values()),
-                                          ligands_in_data, receptors_in_data)
+    indra_db_stmts = list(stmts_by_hash.values())
+
+    # Fetch omnipath database biomolecular interactions and
+    # process them into INDRA statements
+    op = process_from_web()
+
+    # Filter statements which are not ligands/receptors
+    op_filtered = filter_op_stmts(op.statements, ligands_in_data,
+                                  receptors_in_data)
+
+    # Merge omnipath/INDRA statements and run assembly
+    indra_op_stmts = ac.run_preassembly(indra_db_stmts + op_filtered)
 
     # Filter incorrect curations
     db_curations = get_curations()
-    indra_filtered_stmts = ac.filter_by_curation(final_out, curations=db_curations)
-
-    """ Fetch omnipath database biomolecular interactions and
-    process them into INDRA statements """
-    op = process_from_web()
-    omnipath_stmts = op.statements
-
-    # run de-duplication and merge omnipath/INDRA statements
-    indra_op_stmts = ac.run_preassembly(indra_filtered_stmts + omnipath_stmts)
-
-    # Filter statements which are not ligands/receptors
-    filtered_stmts = filter_op_stmts(indra_op_stmts, ligands_in_data,
-                                     receptors_in_data)
-
-    # Filter complex statements from the merged list
-    filter_complex = filter_complex_statements(filtered_stmts,
-                                               ligands_in_data, receptors_in_data)
-    # check for incorrect statements
-    indra_op_filtered = ac.filter_by_curation(filter_complex, curations=db_curations)
-
+    indra_op_filtered = ac.filter_by_curation(indra_op_stmts,
+                                              curations=db_curations)
+    indra_op_filtered = filter_complex_statements(indra_op_filtered,
+                                                  ligands_in_data,
+                                                  receptors_in_data)
 
     # Assemble the statements into HTML formatted report and save into a file
     indra_op_html_report = \
-        html_assembler(indra_op_filtered, fname="indra_omnipath_report.html")
+        html_assembler(indra_op_filtered,
+                       fname='indra_ligand_receptor_report.html')
 
-    """ Assemble the statements into Cytoscape networks and save the file into the disk
-        Optional: Please configure the indra config file in ~/.config/indra/config.ini with
-        NDEx credentials to upload the networks into the server """
+    # Assemble the statements into Cytoscape networks and save the file
+    # into the disk
+    # Optional: Please configure the indra config file in
+    # ~/.config/indra/config.ini with NDEx credentials to upload the
+    # networks into the server
     indra_op_cx_report, ndex_network_id = \
-        cx_assembler(indra_op_filtered, fname="indra_omnipath_report.cx")
+        cx_assembler(indra_op_filtered,
+                     fname='indra_ligand_receptor_report.cx')
     print(ndex_network_id)
