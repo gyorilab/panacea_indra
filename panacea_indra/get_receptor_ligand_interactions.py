@@ -6,6 +6,7 @@ import logging
 import datetime
 import openpyxl
 import pandas as pd
+from indra.sources import tas
 from indra.util import batch_iter
 from collections import defaultdict
 from indra.statements import Complex
@@ -24,7 +25,7 @@ from indra.databases.hgnc_client import get_hgnc_from_mouse, get_hgnc_name
 GO_ANNOTATIONS = '/Users/sbunga/PycharmProjects/INDRA/ligandReceptorInteractome/goa_human.gaf'
 INDRA_DB_PKL = '/Users/sbunga/PycharmProjects/INDRA/ligandReceptorInteractome/db_dump_df.pkl'
 DATA_SPREADSHEET = '/Users/sbunga/PycharmProjects/INDRA/ligandReceptorInteractome/neuroimmuneGeneList2.xlsx'
-
+DRUG_BANK_PKL = '/Users/sbunga/PycharmProjects/INDRA/ligandReceptorInteractome/drugbank_5.1.pkl'
 
 logger = logging.getLogger('receptor_ligand_interactions')
 
@@ -228,6 +229,30 @@ def cx_assembler(indra_stmts, fname):
     return assembled_cx_report, ndex_network_id
 
 
+def get_small_mol_report(receptors_in_data, targets_by_drug,
+                         fname="drug_targets.tsv"):
+    filtered_drugs = defaultdict(set)
+    df = []
+    for drugs in targets_by_drug:
+        a = [agents for agents in targets_by_drug[drugs]]
+        for each_agent in a:
+            if each_agent in receptors_in_data:
+                filtered_drugs[drugs].add(each_agent)
+        if len(filtered_drugs[drugs]) >= 1:
+            hits = len(filtered_drugs[drugs])
+            df.append(
+                {
+                    "Drugs" : drugs,
+                    "Targets" : ", ".join(list(filtered_drugs[drugs])),
+                    "Score" : "{:.3f}".format(hits/len(targets_by_drug[drugs])),
+                    "Hits" : len(filtered_drugs[drugs]),
+                }
+            )
+    df = pd.DataFrame(df).sort_values(by=['Hits', 'Score'], ascending=False)
+    df.to_csv(fname, sep="\t", header=True)
+    return df
+
+
 def set_wd(x):
     """Set working directory to the provided path"""
     try:
@@ -309,3 +334,27 @@ if __name__ == '__main__':
         cx_assembler(indra_op_filtered,
                      fname='indra_ligand_receptor_report.cx')
     print(ndex_network_id)
+
+    ### Small molecule search
+
+    # Process TAS statements
+    tp = tas.process_from_web()
+
+    # Read drugbank database pickle
+    with open(DRUG_BANK_PKL, "rb") as fh:
+        dp = pickle.load(fh)
+
+    # Run preassembly on a list of statements
+    stmts = ac.run_preassembly(tp.statements + dp, return_toplevel=False)
+
+    # Filter the statements to a given statement type
+    stmts_inhibition = ac.filter_by_type(stmts, 'Inhibition')
+
+    targets_by_drug = defaultdict(set)
+
+    # Create a dictionary of Drugs and targets
+    for stmt in stmts_inhibition:
+        targets_by_drug[stmt.subj.name].add(stmt.obj.name)
+
+    df = get_small_mol_report(receptors_in_data,
+                              targets_by_drug)
