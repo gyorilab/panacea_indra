@@ -30,6 +30,12 @@ DRUG_BANK_PKL = '/Users/sbunga/PycharmProjects/INDRA/ligandReceptorInteractome/d
 LIGANDS_INFILE = '/Users/sbunga/PycharmProjects/INDRA/ligandReceptorInteractome/DEG_090320/' \
                  'TwoGroups_DEG1_Dermal Macs_AJ.csv'
 
+GO_ANNOTATIONS = '/Users/ben/genewalk/resources/goa_human.gaf'
+INDRA_DB_PKL = '/Users/ben/data/db_dump_df.pkl'
+DATA_SPREADSHEET = 'Neuroimmune gene list .xlsx'
+DRUG_BANK_PKL = '/Users/ben/data/drugbank_5.1.pkl'
+ION_CHANNELS = 'ion_channels.txt'
+
 logger = logging.getLogger('receptor_ligand_interactions')
 
 
@@ -197,6 +203,8 @@ def read_gene_list(infile, mode):
 def filter_nuclear_receptors(receptors_go, go_term):
     # Filtering out the nuclear receptors from the receptor list
     nuclear_receptors = get_genes_for_go_ids([go_term])
+    # Add any others that don't have the right annotation
+    nuclear_receptors |= {'NR2C2'}
     filtered_receptors_go = receptors_go - nuclear_receptors
     return filtered_receptors_go
 
@@ -267,7 +275,7 @@ def get_small_mol_report(targets_by_drug, ligands_by_receptor,
     df = pd.DataFrame(df).sort_values(by=['Score', 'Number of targets in data',
                                           'Named'],
                                       ascending=False)
-    df.to_csv(fname, sep="\t", header=True)
+    df.to_csv(fname, sep="\t", header=True, index=False)
     return df
 
 
@@ -316,14 +324,15 @@ if __name__ == '__main__':
     receptor_genes_go = get_genes_for_go_ids(receptor_go_ids)
 
     # Filtering out the nuclear receptors from the receptor list
-    receptors_genes_go = filter_nuclear_receptors(receptor_genes_go, 'GO:0004879')
+    receptor_genes_go = filter_nuclear_receptors(receptor_genes_go,
+                                                 'GO:0004879')
 
     # Add ION channels to the receptor list
-    ION_LIST = []
+    ion_channels = set()
     with open(ION_CHANNELS, 'r') as fh:
-        for ions in fh:
-            ION_LIST.append(ions.strip())
-    receptor_genes_go.update(set(ION_LIST))
+        for line in fh:
+            ion_channels.add(line.strip())
+    receptor_genes_go |= ion_channels
 
     ligands_in_data = ligand_genes & ligand_genes_go
     receptors_in_data = receptor_genes & receptor_genes_go
@@ -354,7 +363,8 @@ if __name__ == '__main__':
                                   receptors_in_data)
 
     # Merge omnipath/INDRA statements and run assembly
-    indra_op_stmts = ac.run_preassembly(indra_db_stmts + op_filtered)
+    indra_op_stmts = ac.run_preassembly(indra_db_stmts + op_filtered,
+                                        run_refinement=False)
 
     # Filter incorrect curations
     db_curations = get_curations()
@@ -363,6 +373,11 @@ if __name__ == '__main__':
     indra_op_filtered = filter_complex_statements(indra_op_filtered,
                                                   ligands_in_data,
                                                   receptors_in_data)
+
+    # We do this again because when removing complex members, we
+    # end up with more duplicates
+    indra_op_filtered = ac.run_preassembly(indra_op_filtered,
+                                           run_refinement=False)
 
     with open('indra_ligand_receptor_statements.pkl', 'wb') as fh:
         pickle.dump(indra_op_stmts, fh)
