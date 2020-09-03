@@ -16,6 +16,7 @@ from indra.databases import uniprot_client
 from indra.ontology.bio import bio_ontology
 from indra.databases.uniprot_client import um
 from indra.assemblers.html import HtmlAssembler
+from indra.statements.agent import default_ns_order
 from indra.sources.omnipath import process_from_web
 from indra.assemblers.cx.assembler import CxAssembler
 from indra_db.client.principal.curation import get_curations
@@ -239,7 +240,7 @@ def html_assembler(indra_stmts, fname):
     """Assemble INDRA statements into a HTML report"""
     html_assembler = HtmlAssembler(indra_stmts,
                                    db_rest_url='https://db.indra.bio')
-    assembled_html_report = html_assembler.make_model()
+    assembled_html_report = html_assembler.make_model(no_redundancy=True)
     html_assembler.save_model(fname)
     return assembled_html_report
 
@@ -264,8 +265,9 @@ def get_small_mol_report(targets_by_drug, ligands_by_receptor,
             continue
         df.append(
             {
-                "Drug": drug,
-                "Named": 0 if drug.startswith('CHEMBL') else 1,
+                "Drug": drug[0],
+                "ID": '%s:%s' % (drug[1]),
+                "Named": 0 if drug[0].startswith('CHEMBL') else 1,
                 "Score": "{:.3f}".format(len(targets_in_data)/len(targets)),
                 "Number of targets in data": len(targets_in_data),
                 "Targets in data": ", ".join(sorted(targets_in_data)),
@@ -421,6 +423,8 @@ if __name__ == '__main__':
 
     # Create a dictionary of Drugs and targets
     for stmt in stmts_inhibition:
-        targets_by_drug[stmt.subj.name].add(stmt.obj.name)
+        drug_grounding = stmt.subj.get_grounding(
+            ns_order=default_ns_order+['CHEMBL', 'PUBCHEM', 'DRUGBANK'])
+        targets_by_drug[(stmt.subj.name, drug_grounding)].add(stmt.obj.name)
 
     df = get_small_mol_report(targets_by_drug, ligands_by_receptor)
