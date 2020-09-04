@@ -27,6 +27,8 @@ INDRA_DB_PKL = '/Users/sbunga/PycharmProjects/INDRA/ligandReceptorInteractome/db
 DATA_SPREADSHEET = '/Users/sbunga/PycharmProjects/INDRA/ligandReceptorInteractome/Files/Neuroimmune gene list .xlsx'
 ION_CHANNELS = '/Users/sbunga/PycharmProjects/INDRA/ligandReceptorInteractome/Files/ion_channels.txt'
 DRUG_BANK_PKL = '/Users/sbunga/PycharmProjects/INDRA/ligandReceptorInteractome/drugbank_5.1.pkl'
+LIGANDS_INFILE = '/Users/sbunga/PycharmProjects/INDRA/ligandReceptorInteractome/DEG_090320/' \
+                 'TwoGroups_DEG1_Dermal Macs_AJ.csv'
 
 logger = logging.getLogger('receptor_ligand_interactions')
 
@@ -173,6 +175,13 @@ def read_workbook(workbook):
     return ligands, receptors
 
 
+def process_seurat_csv(infile, fc):
+    df = pd.read_csv(infile, header=0, sep=",")
+    df.columns = df.columns.str.replace('Unnamed: 0','Genes')
+    filtered_markers = df[df.avg_logFC > fc]['Genes']
+    return set(filtered_markers)
+
+
 def read_gene_list(infile, mode):
     gene_list = []
     try:
@@ -268,7 +277,8 @@ def set_wd(x):
         os.chdir(x)
         print("Working directory set to: "+os.getcwd())
     except FileNotFoundError:
-        sys.exit("Please provide a working path.")
+        os.mkdir(x)
+        #sys.exit("Please provide a working path.")
 
 
 def get_ligands_by_receptor(receptors_in_data, ligands_in_data, stmts):
@@ -284,13 +294,14 @@ def get_ligands_by_receptor(receptors_in_data, ligands_in_data, stmts):
 
 if __name__ == '__main__':
     # Set current working directory
-    set_wd("/Users/sbunga/PycharmProjects/INDRA/ligandReceptorInteractome/output-test")
+    set_wd("/Users/sbunga/PycharmProjects/INDRA/ligandReceptorInteractome/output-test/DEG_090320/Dermal_Macro")
 
     # Collect lists of receptors and ligands based on GO annotations and
     # by reading the data
     raw_ligand_genes, raw_receptor_genes = read_workbook(DATA_SPREADSHEET)
+    seurat_ligand_genes = process_seurat_csv(LIGANDS_INFILE, 0.25)
 
-    ligand_genes = mgi_to_hgnc_name(raw_ligand_genes)
+    ligand_genes = mgi_to_hgnc_name(seurat_ligand_genes)
     receptor_genes = mgi_to_hgnc_name(raw_receptor_genes)
     ligand_terms = ['cytokine activity', 'hormone activity',
                     'growth factor activity']
@@ -357,19 +368,19 @@ if __name__ == '__main__':
         pickle.dump(indra_op_stmts, fh)
 
     # Assemble the statements into HTML formatted report and save into a file
-    #indra_op_html_report = \
-    #    html_assembler(indra_op_filtered,
-    #                   fname='indra_ligand_receptor_report.html')
+    indra_op_html_report = \
+        html_assembler(indra_op_filtered,
+                       fname='indra_ligand_receptor_report.html')
 
     # Assemble the statements into Cytoscape networks and save the file
     # into the disk
     # Optional: Please configure the indra config file in
     # ~/.config/indra/config.ini with NDEx credentials to upload the
     # networks into the server
-    #indra_op_cx_report, ndex_network_id = \
-    #    cx_assembler(indra_op_filtered,
-    #                 fname='indra_ligand_receptor_report.cx')
-    #print(ndex_network_id)
+    indra_op_cx_report, ndex_network_id = \
+        cx_assembler(indra_op_filtered,
+                     fname='indra_ligand_receptor_report.cx')
+    print(ndex_network_id)
 
     ligands_by_receptor = get_ligands_by_receptor(receptors_in_data,
                                                   ligands_in_data,
