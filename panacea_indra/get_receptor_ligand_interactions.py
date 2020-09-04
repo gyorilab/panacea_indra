@@ -175,10 +175,12 @@ def read_workbook(workbook):
     Condition: considers first column/sheet as ligand genes and second
     column/shet as receptor genes
     """
+    ligands_sheet = 'updated list of ligands '
+    receptors_sheet = 'RPKM > 1.5 cfiber'
     wb = openpyxl.load_workbook(workbook)
-    ligands = fix_dates(set([row[0].value for row in wb['logFC>0.25']][1:]))
+    ligands = fix_dates(set([row[0].value for row in wb[ligands_sheet]][1:]))
     receptors = fix_dates(set([row[0].value
-                               for row in wb['RPKM > 1.5 cfiber']][1:]))
+                               for row in wb[receptors_sheet]][1:]))
     return ligands, receptors
 
 
@@ -302,6 +304,21 @@ def get_ligands_by_receptor(receptors_in_data, ligands_in_data, stmts):
     return dict(ligands_by_receptor)
 
 
+def filter_out_medscan(stmts):
+    logger.info('Filtering out medscan evidence on %d statements' % len(stmts))
+    new_stmts = []
+    for stmt in stmts:
+        new_evidence = [e for e in stmt.evidence if e.source_api != 'medscan']
+        if not new_evidence:
+            continue
+        stmt.evidence = new_evidence
+        if not stmt.evidence:
+            continue
+        new_stmts.append(stmt)
+    logger.info('%d statements after filter' % len(new_stmts))
+    return new_stmts
+
+
 if __name__ == '__main__':
     # Set current working directory
     set_wd("/Users/sbunga/PycharmProjects/INDRA/ligandReceptorInteractome/output-test/DEG_090320/Dermal_Macro")
@@ -381,12 +398,15 @@ if __name__ == '__main__':
     indra_op_filtered = ac.run_preassembly(indra_op_filtered,
                                            run_refinement=False)
 
+    stmts_public = filter_out_medscan(indra_op_filtered)
+
+
     with open('indra_ligand_receptor_statements.pkl', 'wb') as fh:
-        pickle.dump(indra_op_stmts, fh)
+        pickle.dump(indra_op_filtered, fh)
 
     # Assemble the statements into HTML formatted report and save into a file
     indra_op_html_report = \
-        html_assembler(indra_op_filtered,
+        html_assembler(stmts_public,
                        fname='indra_ligand_receptor_report.html')
 
     # Assemble the statements into Cytoscape networks and save the file
@@ -395,36 +415,41 @@ if __name__ == '__main__':
     # ~/.config/indra/config.ini with NDEx credentials to upload the
     # networks into the server
     indra_op_cx_report, ndex_network_id = \
-        cx_assembler(indra_op_filtered,
+        cx_assembler(stmts_public,
                      fname='indra_ligand_receptor_report.cx')
     print(ndex_network_id)
 
     ligands_by_receptor = get_ligands_by_receptor(receptors_in_data,
                                                   ligands_in_data,
-                                                  indra_op_stmts)
+                                                  indra_op_filtered)
 
     ### Small molecule search
 
-    # Process TAS statements
-    tp = tas.process_from_web()
+    if not os.path.exists('stmts_inhibition.pkl'):
+        # Process TAS statements
+        tp = tas.process_from_web()
 
-    # Read drugbank database pickle
-    with open(DRUG_BANK_PKL, "rb") as fh:
-        dp = pickle.load(fh)
+        # Read drugbank database pickle
+        with open(DRUG_BANK_PKL, "rb") as fh:
+            dp = pickle.load(fh)
 
-    # Run preassembly on a list of statements
-    stmts = ac.run_preassembly(tp.statements + dp, return_toplevel=False,
-                               run_refinement=False)
+        # Run preassembly on a list of statements
+        stmts = ac.run_preassembly(tp.statements + dp, return_toplevel=False,
+                                   run_refinement=False)
 
-    # Filter the statements to a given statement type
-    stmts_inhibition = ac.filter_by_type(stmts, 'Inhibition')
+        # Filter the statements to a given statement type
+        stmts_inhibition = ac.filter_by_type(stmts, 'Inhibition')
+    else:
+        with open('stmts_inhibition.pkl', 'rb') as fh:
+            stmts_inhibition = pickle.load(fh)
 
     targets_by_drug = defaultdict(set)
 
     # Create a dictionary of Drugs and targets
     for stmt in stmts_inhibition:
         drug_grounding = stmt.subj.get_grounding(
-            ns_order=default_ns_order+['CHEMBL', 'PUBCHEM', 'DRUGBANK'])
+            ns_order=default_ns_order+['CHEMBL', 'PUBCHEM', 'DRUGBANK',
+                                       'HMS-LINCS'])
         targets_by_drug[(stmt.subj.name, drug_grounding)].add(stmt.obj.name)
 
     df = get_small_mol_report(targets_by_drug, ligands_by_receptor)
