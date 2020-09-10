@@ -28,14 +28,20 @@ INDRA_DB_PKL = '/Users/sbunga/PycharmProjects/INDRA/ligandReceptorInteractome/db
 DATA_SPREADSHEET = '/Users/sbunga/PycharmProjects/INDRA/ligandReceptorInteractome/Files/Neuroimmune gene list .xlsx'
 ION_CHANNELS = '/Users/sbunga/PycharmProjects/INDRA/ligandReceptorInteractome/Files/ion_channels.txt'
 DRUG_BANK_PKL = '/Users/sbunga/PycharmProjects/INDRA/ligandReceptorInteractome/drugbank_5.1.pkl'
-LIGANDS_INFILE = '/Users/sbunga/PycharmProjects/INDRA/ligandReceptorInteractome/DEG_090320/' \
-                 'TwoGroups_DEG1_Dermal Macs_AJ.csv'
+#LIGANDS_INFILE = '/Users/sbunga/PycharmProjects/INDRA/ligandReceptorInteractome/DEG_090320/' \
+#                 'TwoGroups_DEG1_Monocytes_AJ.csv'
+SURFACE_PROTEINS_WB = '/Users/sbunga/PycharmProjects/INDRA/ligandReceptorInteractome/Files/Surface Proteins.xlsx'
+IMMUNE_CELLTYPE_LIST = ['TwoGroups_DEG1_DCs_AJ.csv', 'TwoGroups_DEG1_Dermal Macs_AJ.csv',
+                       'TwoGroups_DEG1_M2a_AJ.csv', 'TwoGroups_DEG1_M2b_AJ.csv',
+                       'TwoGroups_DEG1_Monocytes_AJ.csv', 'TwoGroups_DEG1_Resident Mac_AJ.csv']
 
+"""
 GO_ANNOTATIONS = '/Users/ben/genewalk/resources/goa_human.gaf'
 INDRA_DB_PKL = '/Users/ben/data/db_dump_df.pkl'
 DATA_SPREADSHEET = 'Neuroimmune gene list .xlsx'
 DRUG_BANK_PKL = '/Users/ben/data/drugbank_5.1.pkl'
 ION_CHANNELS = 'ion_channels.txt'
+"""
 
 logger = logging.getLogger('receptor_ligand_interactions')
 
@@ -185,6 +191,8 @@ def read_workbook(workbook):
 
 
 def process_seurat_csv(infile, fc):
+    """ Process Seurat dataframe and only filter in
+    genes with the given Fold change """
     df = pd.read_csv(infile, header=0, sep=",")
     df.columns = df.columns.str.replace('Unnamed: 0','Genes')
     filtered_markers = df[df.avg_logFC > fc]['Genes']
@@ -320,136 +328,156 @@ def filter_out_medscan(stmts):
 
 
 if __name__ == '__main__':
-    # Set current working directory
-    set_wd("/Users/sbunga/PycharmProjects/INDRA/ligandReceptorInteractome/output-test/DEG_090320/Dermal_Macro")
+    # Looping over each file (cell type) and perform anylysis
+    # for each cell type
+    for cell_type in IMMUNE_CELLTYPE_LIST:
+        # get the file name and use it as its directory name
+        out_dir = cell_type.split(".")[0]
 
-    # Collect lists of receptors and ligands based on GO annotations and
-    # by reading the data
-    raw_ligand_genes, raw_receptor_genes = read_workbook(DATA_SPREADSHEET)
-    seurat_ligand_genes = process_seurat_csv(LIGANDS_INFILE, 0.25)
+        # read the input (immune cell type) ligand file
+        LIGANDS_INFILE = '/Users/sbunga/PycharmProjects/INDRA/ligandReceptorInteractome/DEG_090320/' \
+                         + cell_type
 
-    ligand_genes = mgi_to_hgnc_name(seurat_ligand_genes)
-    receptor_genes = mgi_to_hgnc_name(raw_receptor_genes)
-    ligand_terms = ['cytokine activity', 'hormone activity',
-                    'growth factor activity']
-    receptor_terms = ['signaling receptor activity']
+        # Set current working directory
+        set_wd("/Users/sbunga/PycharmProjects/INDRA/ligandReceptorInteractome/output-test/DEG_090320/"
+               + out_dir)
 
-    ligand_go_ids = [bio_ontology.get_id_from_name('GO', term)[1]
-                     for term in ligand_terms]
-    receptor_go_ids = [bio_ontology.get_id_from_name('GO', term)[1]
-                       for term in receptor_terms]
+        # Collect lists of receptors and ligands based on GO annotations and
+        # by reading the data
+        raw_ligand_genes, raw_receptor_genes = read_workbook(DATA_SPREADSHEET)
 
-    ligand_genes_go = get_genes_for_go_ids(ligand_go_ids)
-    receptor_genes_go = get_genes_for_go_ids(receptor_go_ids)
+        # Extract markers from seurat dataframe with logFC >= 0.25
+        seurat_ligand_genes = process_seurat_csv(LIGANDS_INFILE, 0.25)
 
-    # Filtering out the nuclear receptors from the receptor list
-    receptor_genes_go = filter_nuclear_receptors(receptor_genes_go,
-                                                 'GO:0004879')
+        # Read and extract cell surface proteins from CSPA DB
+        wb = openpyxl.load_workbook(SURFACE_PROTEINS_WB)
+        surface_protein_set = set(row[4].value for row in wb['Sheet 1'])
 
-    # Add ION channels to the receptor list
-    ion_channels = set()
-    with open(ION_CHANNELS, 'r') as fh:
-        for line in fh:
-            ion_channels.add(line.strip())
-    receptor_genes_go |= ion_channels
+        ligand_genes = mgi_to_hgnc_name(seurat_ligand_genes)
+        receptor_genes = mgi_to_hgnc_name(raw_receptor_genes)
+        ligand_terms = ['cytokine activity', 'hormone activity',
+                        'growth factor activity']
+        receptor_terms = ['signaling receptor activity']
 
-    ligands_in_data = ligand_genes & ligand_genes_go
-    receptors_in_data = receptor_genes & receptor_genes_go
-    ligands_in_data.add('THBS1')
+        ligand_go_ids = [bio_ontology.get_id_from_name('GO', term)[1]
+                         for term in ligand_terms]
+        receptor_go_ids = [bio_ontology.get_id_from_name('GO', term)[1]
+                           for term in receptor_terms]
 
-    logger.info(f'Loaded {len(ligands_in_data)} ligand genes from data')
-    logger.info(f'Loaded {len(receptors_in_data)} receptor genes from data')
+        ligand_genes_go = get_genes_for_go_ids(ligand_go_ids)
+        receptor_genes_go = get_genes_for_go_ids(receptor_go_ids)
 
-    # Now get INDRA DB Statements for the receptor-ligand pairs
-    df = load_indra_df(INDRA_DB_PKL)
-    hashes_by_gene_pair = get_hashes_by_gene_pair(df, ligands_in_data,
-                                                  receptors_in_data)
+        # remove all the receptors from the surface_protein_set
+        surface_protein_ligands = surface_protein_set - receptor_genes_go
+        full_ligand_set = surface_protein_ligands.union(ligand_genes_go)
 
-    all_hashes = set.union(*hashes_by_gene_pair.values())
-    stmts_by_hash = download_statements(all_hashes)
+        # Filtering out the nuclear receptors from the receptor list
+        receptor_genes_go = filter_nuclear_receptors(receptor_genes_go,
+                                                     'GO:0004879')
 
-    # filter Complex statements
-    indra_db_stmts = list(stmts_by_hash.values())
-    # Filtering out the indirect INDRA statements
-    indra_db_stmts = ac.filter_direct(indra_db_stmts)
+        # Add ION channels to the receptor list
+        ion_channels = set()
+        with open(ION_CHANNELS, 'r') as fh:
+            for line in fh:
+                ion_channels.add(line.strip())
+        receptor_genes_go |= ion_channels
 
-    # Fetch omnipath database biomolecular interactions and
-    # process them into INDRA statements
-    op = process_from_web()
+        ligands_in_data = ligand_genes & full_ligand_set
+        receptors_in_data = receptor_genes & receptor_genes_go
+        # ligands_in_data.add('THBS1')
 
-    # Filter statements which are not ligands/receptors
-    op_filtered = filter_op_stmts(op.statements, ligands_in_data,
-                                  receptors_in_data)
+        logger.info(f'Loaded {len(ligands_in_data)} ligand genes from data')
+        logger.info(f'Loaded {len(receptors_in_data)} receptor genes from data')
 
-    # Merge omnipath/INDRA statements and run assembly
-    indra_op_stmts = ac.run_preassembly(indra_db_stmts + op_filtered,
-                                        run_refinement=False)
+        # Now get INDRA DB Statements for the receptor-ligand pairs
+        df = load_indra_df(INDRA_DB_PKL)
+        hashes_by_gene_pair = get_hashes_by_gene_pair(df, ligands_in_data,
+                                                      receptors_in_data)
 
-    # Filter incorrect curations
-    db_curations = get_curations()
-    indra_op_filtered = ac.filter_by_curation(indra_op_stmts,
-                                              curations=db_curations)
-    indra_op_filtered = filter_complex_statements(indra_op_filtered,
-                                                  ligands_in_data,
-                                                  receptors_in_data)
+        all_hashes = set.union(*hashes_by_gene_pair.values())
+        stmts_by_hash = download_statements(all_hashes)
 
-    # We do this again because when removing complex members, we
-    # end up with more duplicates
-    indra_op_filtered = ac.run_preassembly(indra_op_filtered,
-                                           run_refinement=False)
+        # filter Complex statements
+        indra_db_stmts = list(stmts_by_hash.values())
+        # Filtering out the indirect INDRA statements
+        indra_db_stmts = ac.filter_direct(indra_db_stmts)
 
-    stmts_public = filter_out_medscan(indra_op_filtered)
+        # Fetch omnipath database biomolecular interactions and
+        # process them into INDRA statements
+        op = process_from_web()
 
+        # Filter statements which are not ligands/receptors
+        op_filtered = filter_op_stmts(op.statements, ligands_in_data,
+                                      receptors_in_data)
 
-    with open('indra_ligand_receptor_statements.pkl', 'wb') as fh:
-        pickle.dump(indra_op_filtered, fh)
+        # Merge omnipath/INDRA statements and run assembly
+        indra_op_stmts = ac.run_preassembly(indra_db_stmts + op_filtered,
+                                            run_refinement=False)
 
-    # Assemble the statements into HTML formatted report and save into a file
-    indra_op_html_report = \
-        html_assembler(stmts_public,
-                       fname='indra_ligand_receptor_report.html')
+        # Filter incorrect curations
+        db_curations = get_curations()
+        indra_op_filtered = ac.filter_by_curation(indra_op_stmts,
+                                                  curations=db_curations)
+        indra_op_filtered = filter_complex_statements(indra_op_filtered,
+                                                      ligands_in_data,
+                                                      receptors_in_data)
 
-    # Assemble the statements into Cytoscape networks and save the file
-    # into the disk
-    # Optional: Please configure the indra config file in
-    # ~/.config/indra/config.ini with NDEx credentials to upload the
-    # networks into the server
-    indra_op_cx_report, ndex_network_id = \
-        cx_assembler(stmts_public,
-                     fname='indra_ligand_receptor_report.cx')
-    print(ndex_network_id)
+        # We do this again because when removing complex members, we
+        # end up with more duplicates
+        indra_op_filtered = ac.run_preassembly(indra_op_filtered,
+                                               run_refinement=False)
 
-    ligands_by_receptor = get_ligands_by_receptor(receptors_in_data,
-                                                  ligands_in_data,
-                                                  indra_op_filtered)
+        stmts_public = filter_out_medscan(indra_op_filtered)
 
-    ### Small molecule search
+        with open('indra_ligand_receptor_statements.pkl', 'wb') as fh:
+            pickle.dump(indra_op_filtered, fh)
 
-    if not os.path.exists('stmts_inhibition.pkl'):
-        # Process TAS statements
-        tp = tas.process_from_web()
+        # Assemble the statements into HTML formatted report and save into a file
+        indra_op_html_report = \
+            html_assembler(stmts_public,
+                           fname='indra_ligand_receptor_report.html')
 
-        # Read drugbank database pickle
-        with open(DRUG_BANK_PKL, "rb") as fh:
-            dp = pickle.load(fh)
+        # Assemble the statements into Cytoscape networks and save the file
+        # into the disk
+        # Optional: Please configure the indra config file in
+        # ~/.config/indra/config.ini with NDEx credentials to upload the
+        # networks into the server
+        indra_op_cx_report, ndex_network_id = \
+            cx_assembler(stmts_public,
+                         fname='indra_ligand_receptor_report.cx')
+        print(ndex_network_id)
 
-        # Run preassembly on a list of statements
-        stmts = ac.run_preassembly(tp.statements + dp, return_toplevel=False,
-                                   run_refinement=False)
+        ligands_by_receptor = get_ligands_by_receptor(receptors_in_data,
+                                                      ligands_in_data,
+                                                      indra_op_filtered)
 
-        # Filter the statements to a given statement type
-        stmts_inhibition = ac.filter_by_type(stmts, 'Inhibition')
-    else:
-        with open('stmts_inhibition.pkl', 'rb') as fh:
-            stmts_inhibition = pickle.load(fh)
+        ### Small molecule search
 
-    targets_by_drug = defaultdict(set)
+        if not os.path.exists('stmts_inhibition.pkl'):
+            # Process TAS statements
+            tp = tas.process_from_web()
 
-    # Create a dictionary of Drugs and targets
-    for stmt in stmts_inhibition:
-        drug_grounding = stmt.subj.get_grounding(
-            ns_order=default_ns_order+['CHEMBL', 'PUBCHEM', 'DRUGBANK',
-                                       'HMS-LINCS'])
-        targets_by_drug[(stmt.subj.name, drug_grounding)].add(stmt.obj.name)
+            # Read drugbank database pickle
+            with open(DRUG_BANK_PKL, "rb") as fh:
+                dp = pickle.load(fh)
 
-    df = get_small_mol_report(targets_by_drug, ligands_by_receptor)
+            # Run preassembly on a list of statements
+            stmts = ac.run_preassembly(tp.statements + dp, return_toplevel=False,
+                                       run_refinement=False)
+
+            # Filter the statements to a given statement type
+            stmts_inhibition = ac.filter_by_type(stmts, 'Inhibition')
+        else:
+            with open('stmts_inhibition.pkl', 'rb') as fh:
+                stmts_inhibition = pickle.load(fh)
+
+        targets_by_drug = defaultdict(set)
+
+        # Create a dictionary of Drugs and targets
+        for stmt in stmts_inhibition:
+            drug_grounding = stmt.subj.get_grounding(
+                ns_order=default_ns_order + ['CHEMBL', 'PUBCHEM', 'DRUGBANK',
+                                             'HMS-LINCS'])
+            targets_by_drug[(stmt.subj.name, drug_grounding)].add(stmt.obj.name)
+
+        df = get_small_mol_report(targets_by_drug, ligands_by_receptor)
