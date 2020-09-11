@@ -22,25 +22,22 @@ from indra.assemblers.cx.assembler import CxAssembler
 from indra_db.client.principal.curation import get_curations
 from indra.databases.hgnc_client import get_hgnc_from_mouse, get_hgnc_name
 
+HERE = os.path.dirname(os.path.abspath(__file__))
+INPUT = os.path.join(HERE, 'input')
+OUTPUT = os.path.join(HERE, 'output')
 
-GO_ANNOTATIONS = '/Users/sbunga/PycharmProjects/INDRA/ligandReceptorInteractome/goa_human.gaf'
-INDRA_DB_PKL = '/Users/sbunga/PycharmProjects/INDRA/ligandReceptorInteractome/db_dump_df.pkl'
-DATA_SPREADSHEET = '/Users/sbunga/PycharmProjects/INDRA/ligandReceptorInteractome/Files/Neuroimmune gene list .xlsx'
-ION_CHANNELS = '/Users/sbunga/PycharmProjects/INDRA/ligandReceptorInteractome/Files/ion_channels.txt'
-DRUG_BANK_PKL = '/Users/sbunga/PycharmProjects/INDRA/ligandReceptorInteractome/drugbank_5.1.pkl'
-#LIGANDS_INFILE = '/Users/sbunga/PycharmProjects/INDRA/ligandReceptorInteractome/DEG_090320/' \
-#                 'TwoGroups_DEG1_Monocytes_AJ.csv'
-SURFACE_PROTEINS_WB = '/Users/sbunga/PycharmProjects/INDRA/ligandReceptorInteractome/Files/Surface Proteins.xlsx'
-IMMUNE_CELLTYPE_LIST = ['TwoGroups_DEG1_DCs_AJ.csv', 'TwoGroups_DEG1_Dermal Macs_AJ.csv',
-                       'TwoGroups_DEG1_M2a_AJ.csv', 'TwoGroups_DEG1_M2b_AJ.csv',
-                       'TwoGroups_DEG1_Monocytes_AJ.csv', 'TwoGroups_DEG1_Resident Mac_AJ.csv']
-
-GO_ANNOTATIONS = '/Users/ben/genewalk/resources/goa_human.gaf'
-INDRA_DB_PKL = '/Users/ben/data/db_dump_df.pkl'
-DATA_SPREADSHEET = 'Neuroimmune gene list .xlsx'
-DRUG_BANK_PKL = '/Users/ben/data/drugbank_5.1.pkl'
-ION_CHANNELS = 'ion_channels.txt'
-SURFACE_PROTEINS_WB = 'Surface Proteins.xlsx'
+GO_ANNOTATIONS = os.path.join(INPUT, 'goa_human.gaf')
+INDRA_DB_PKL = os.path.join(INPUT, 'db_dump_df.pkl')
+DATA_SPREADSHEET = os.path.join(INPUT, 'Neuroimmune gene list .xlsx')
+DRUG_BANK_PKL = os.path.join(INPUT, 'drugbank_5.1.pkl')
+ION_CHANNELS = os.path.join(INPUT, 'ion_channels.txt')
+SURFACE_PROTEINS_WB = os.path.join(INPUT, 'Surface Proteins.xlsx')
+IMMUNE_CELLTYPE_LIST = ['TwoGroups_DEG1_DCs_AJ',
+                        'TwoGroups_DEG1_Dermal Macs_AJ',
+                        'TwoGroups_DEG1_M2a_AJ',
+                        'TwoGroups_DEG1_M2b_AJ',
+                        'TwoGroups_DEG1_Monocytes_AJ',
+                        'TwoGroups_DEG1_Resident Mac_AJ']
 
 logger = logging.getLogger('receptor_ligand_interactions')
 
@@ -358,6 +355,10 @@ if __name__ == '__main__':
             ion_channels.add(line.strip())
     receptor_genes_go |= ion_channels
 
+    # Fetch omnipath database biomolecular interactions and
+    # process them into INDRA statements
+    op = process_from_web()
+
     ### Small molecule search
     if not os.path.exists('stmts_inhibition.pkl'):
         # Process TAS statements
@@ -384,14 +385,9 @@ if __name__ == '__main__':
         out_dir = cell_type.split(".")[0]
 
         # read the input (immune cell type) ligand file
-        #LIGANDS_INFILE = '/Users/sbunga/PycharmProjects/INDRA/ligandReceptorInteractome/DEG_090320/' \
-        #                 + cell_type
-        LIGANDS_INFILE = cell_type
+        LIGANDS_INFILE = os.path.join(INPUT, '%s.csv' % cell_type)
 
         # Set current working directory
-        #set_wd("/Users/sbunga/PycharmProjects/INDRA/ligandReceptorInteractome/output-test/DEG_090320/"
-        #       + out_dir)
-
         # Collect lists of receptors and ligands based on GO annotations and
         # by reading the data
         raw_ligand_genes, raw_receptor_genes = read_workbook(DATA_SPREADSHEET)
@@ -421,10 +417,6 @@ if __name__ == '__main__':
         # Filtering out the indirect INDRA statements
         indra_db_stmts = ac.filter_direct(indra_db_stmts)
 
-        # Fetch omnipath database biomolecular interactions and
-        # process them into INDRA statements
-        op = process_from_web()
-
         # Filter statements which are not ligands/receptors
         op_filtered = filter_op_stmts(op.statements, ligands_in_data,
                                       receptors_in_data)
@@ -448,13 +440,17 @@ if __name__ == '__main__':
 
         stmts_public = filter_out_medscan(indra_op_filtered)
 
-        with open('indra_ligand_receptor_statements.pkl', 'wb') as fh:
+        with open(os.path.join(
+                OUTPUT, cell_type,
+                'indra_ligand_receptor_statements.pkl'), 'wb') as fh:
             pickle.dump(indra_op_filtered, fh)
 
         # Assemble the statements into HTML formatted report and save into a file
         indra_op_html_report = \
-            html_assembler(stmts_public,
-                           fname='indra_ligand_receptor_report.html')
+            html_assembler(
+                stmts_public,
+                fname=os.path.join(OUTPUT, cell_type,
+                                   'indra_ligand_receptor_report.html'))
 
         # Assemble the statements into Cytoscape networks and save the file
         # into the disk
@@ -462,14 +458,14 @@ if __name__ == '__main__':
         # ~/.config/indra/config.ini with NDEx credentials to upload the
         # networks into the server
         indra_op_cx_report, ndex_network_id = \
-            cx_assembler(stmts_public,
-                         fname='indra_ligand_receptor_report.cx')
-        print(ndex_network_id)
+            cx_assembler(
+                stmts_public,
+                fname=os.path.join(OUTPUT, cell_type,
+                                   'indra_ligand_receptor_report.cx'))
 
         ligands_by_receptor = get_ligands_by_receptor(receptors_in_data,
                                                       ligands_in_data,
                                                       indra_op_filtered)
-
 
         targets_by_drug = defaultdict(set)
 
@@ -480,4 +476,6 @@ if __name__ == '__main__':
                                              'HMS-LINCS'])
             targets_by_drug[(stmt.subj.name, drug_grounding)].add(stmt.obj.name)
 
-        df = get_small_mol_report(targets_by_drug, ligands_by_receptor)
+        df = get_small_mol_report(targets_by_drug, ligands_by_receptor,
+                                  os.path.join(OUTPUT, cell_type,
+                                               'drug_targets.tsv'))
