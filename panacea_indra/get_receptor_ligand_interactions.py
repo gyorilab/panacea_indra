@@ -378,6 +378,15 @@ if __name__ == '__main__':
         with open(os.path.join(INPUT, 'stmts_inhibition.pkl'), 'rb') as fh:
             stmts_inhibition = pickle.load(fh)
 
+    targets_by_drug = defaultdict(set)
+
+    # Create a dictionary of Drugs and targets
+    for stmt in stmts_inhibition:
+        drug_grounding = stmt.subj.get_grounding(
+            ns_order=default_ns_order + ['CHEMBL', 'PUBCHEM', 'DRUGBANK',
+                                         'HMS-LINCS'])
+        targets_by_drug[(stmt.subj.name, drug_grounding)].add(stmt.obj.name)
+
     # Looping over each file (cell type) and perform anylysis
     # for each cell type
     for cell_type in IMMUNE_CELLTYPE_LIST:
@@ -469,15 +478,6 @@ if __name__ == '__main__':
         ligands_by_receptor = get_ligands_by_receptor(receptors_in_data,
                                                       ligands_in_data,
                                                       indra_op_filtered)
-
-        targets_by_drug = defaultdict(set)
-
-        # Create a dictionary of Drugs and targets
-        for stmt in stmts_inhibition:
-            drug_grounding = stmt.subj.get_grounding(
-                ns_order=default_ns_order + ['CHEMBL', 'PUBCHEM', 'DRUGBANK',
-                                             'HMS-LINCS'])
-            targets_by_drug[(stmt.subj.name, drug_grounding)].add(stmt.obj.name)
 
         df = get_small_mol_report(targets_by_drug, ligands_by_receptor,
                                   os.path.join(output_dir,
