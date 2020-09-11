@@ -261,8 +261,7 @@ def cx_assembler(indra_stmts, fname):
     return assembled_cx_report, ndex_network_id
 
 
-def get_small_mol_report(targets_by_drug, ligands_by_receptor,
-                         fname="drug_targets.tsv"):
+def get_small_mol_report(targets_by_drug, ligands_by_receptor, fname):
     df = []
     receptors_with_ligands = set(ligands_by_receptor.keys())
     for drug, targets in targets_by_drug.items():
@@ -360,7 +359,8 @@ if __name__ == '__main__':
     op = process_from_web()
 
     ### Small molecule search
-    if not os.path.exists('stmts_inhibition.pkl'):
+    if not os.path.exists(os.path.join(INPUT,
+                                       'stmts_inhibition.pkl')):
         # Process TAS statements
         tp = tas.process_from_web()
 
@@ -375,12 +375,15 @@ if __name__ == '__main__':
         # Filter the statements to a given statement type
         stmts_inhibition = ac.filter_by_type(stmts, 'Inhibition')
     else:
-        with open('stmts_inhibition.pkl', 'rb') as fh:
+        with open(os.path.join(INPUT, 'stmts_inhibition.pkl'), 'rb') as fh:
             stmts_inhibition = pickle.load(fh)
 
     # Looping over each file (cell type) and perform anylysis
     # for each cell type
     for cell_type in IMMUNE_CELLTYPE_LIST:
+        output_dir = os.path.join(OUTPUT, cell_type)
+        if not os.path.exists(output_dir):
+            os.mkdir(output_dir)
         # get the file name and use it as its directory name
         out_dir = cell_type.split(".")[0]
 
@@ -449,7 +452,7 @@ if __name__ == '__main__':
         indra_op_html_report = \
             html_assembler(
                 stmts_public,
-                fname=os.path.join(OUTPUT, cell_type,
+                fname=os.path.join(output_dir,
                                    'indra_ligand_receptor_report.html'))
 
         # Assemble the statements into Cytoscape networks and save the file
@@ -460,7 +463,7 @@ if __name__ == '__main__':
         indra_op_cx_report, ndex_network_id = \
             cx_assembler(
                 stmts_public,
-                fname=os.path.join(OUTPUT, cell_type,
+                fname=os.path.join(output_dir,
                                    'indra_ligand_receptor_report.cx'))
 
         ligands_by_receptor = get_ligands_by_receptor(receptors_in_data,
@@ -477,5 +480,5 @@ if __name__ == '__main__':
             targets_by_drug[(stmt.subj.name, drug_grounding)].add(stmt.obj.name)
 
         df = get_small_mol_report(targets_by_drug, ligands_by_receptor,
-                                  os.path.join(OUTPUT, cell_type,
+                                  os.path.join(output_dir,
                                                'drug_targets.tsv'))
