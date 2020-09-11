@@ -23,8 +23,8 @@ from indra_db.client.principal.curation import get_curations
 from indra.databases.hgnc_client import get_hgnc_from_mouse, get_hgnc_name
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-INPUT = os.path.join(HERE, 'input')
-OUTPUT = os.path.join(HERE, 'output')
+INPUT = os.path.join(HERE, os.pardir, 'input')
+OUTPUT = os.path.join(HERE, os.pardir, 'output')
 
 GO_ANNOTATIONS = os.path.join(INPUT, 'goa_human.gaf')
 INDRA_DB_PKL = os.path.join(INPUT, 'db_dump_df.pkl')
