@@ -35,13 +35,12 @@ IMMUNE_CELLTYPE_LIST = ['TwoGroups_DEG1_DCs_AJ.csv', 'TwoGroups_DEG1_Dermal Macs
                        'TwoGroups_DEG1_M2a_AJ.csv', 'TwoGroups_DEG1_M2b_AJ.csv',
                        'TwoGroups_DEG1_Monocytes_AJ.csv', 'TwoGroups_DEG1_Resident Mac_AJ.csv']
 
-"""
 GO_ANNOTATIONS = '/Users/ben/genewalk/resources/goa_human.gaf'
 INDRA_DB_PKL = '/Users/ben/data/db_dump_df.pkl'
 DATA_SPREADSHEET = 'Neuroimmune gene list .xlsx'
 DRUG_BANK_PKL = '/Users/ben/data/drugbank_5.1.pkl'
 ION_CHANNELS = 'ion_channels.txt'
-"""
+SURFACE_PROTEINS_WB = 'Surface Proteins.xlsx'
 
 logger = logging.getLogger('receptor_ligand_interactions')
 
@@ -328,6 +327,56 @@ def filter_out_medscan(stmts):
 
 
 if __name__ == '__main__':
+    # Read and extract cell surface proteins from CSPA DB
+    wb = openpyxl.load_workbook(SURFACE_PROTEINS_WB)
+    surface_protein_set = set(row[4].value for row in wb['Sheet 1'])
+
+    ligand_terms = ['cytokine activity', 'hormone activity',
+                    'growth factor activity']
+    receptor_terms = ['signaling receptor activity']
+
+    ligand_go_ids = [bio_ontology.get_id_from_name('GO', term)[1]
+                     for term in ligand_terms]
+    receptor_go_ids = [bio_ontology.get_id_from_name('GO', term)[1]
+                       for term in receptor_terms]
+
+    ligand_genes_go = get_genes_for_go_ids(ligand_go_ids)
+    receptor_genes_go = get_genes_for_go_ids(receptor_go_ids)
+
+    # remove all the receptors from the surface_protein_set
+    full_ligand_set = \
+        (surface_protein_set - receptor_genes_go) | ligand_genes_go
+
+    # Filtering out the nuclear receptors from the receptor list
+    receptor_genes_go = filter_nuclear_receptors(receptor_genes_go,
+                                                 'GO:0004879')
+
+    # Add ION channels to the receptor list
+    ion_channels = set()
+    with open(ION_CHANNELS, 'r') as fh:
+        for line in fh:
+            ion_channels.add(line.strip())
+    receptor_genes_go |= ion_channels
+
+    ### Small molecule search
+    if not os.path.exists('stmts_inhibition.pkl'):
+        # Process TAS statements
+        tp = tas.process_from_web()
+
+        # Read drugbank database pickle
+        with open(DRUG_BANK_PKL, "rb") as fh:
+            dp = pickle.load(fh)
+
+        # Run preassembly on a list of statements
+        stmts = ac.run_preassembly(tp.statements + dp, return_toplevel=False,
+                                   run_refinement=False)
+
+        # Filter the statements to a given statement type
+        stmts_inhibition = ac.filter_by_type(stmts, 'Inhibition')
+    else:
+        with open('stmts_inhibition.pkl', 'rb') as fh:
+            stmts_inhibition = pickle.load(fh)
+
     # Looping over each file (cell type) and perform anylysis
     # for each cell type
     for cell_type in IMMUNE_CELLTYPE_LIST:
@@ -335,12 +384,13 @@ if __name__ == '__main__':
         out_dir = cell_type.split(".")[0]
 
         # read the input (immune cell type) ligand file
-        LIGANDS_INFILE = '/Users/sbunga/PycharmProjects/INDRA/ligandReceptorInteractome/DEG_090320/' \
-                         + cell_type
+        #LIGANDS_INFILE = '/Users/sbunga/PycharmProjects/INDRA/ligandReceptorInteractome/DEG_090320/' \
+        #                 + cell_type
+        LIGANDS_INFILE = cell_type
 
         # Set current working directory
-        set_wd("/Users/sbunga/PycharmProjects/INDRA/ligandReceptorInteractome/output-test/DEG_090320/"
-               + out_dir)
+        #set_wd("/Users/sbunga/PycharmProjects/INDRA/ligandReceptorInteractome/output-test/DEG_090320/"
+        #       + out_dir)
 
         # Collect lists of receptors and ligands based on GO annotations and
         # by reading the data
@@ -349,42 +399,11 @@ if __name__ == '__main__':
         # Extract markers from seurat dataframe with logFC >= 0.25
         seurat_ligand_genes = process_seurat_csv(LIGANDS_INFILE, 0.25)
 
-        # Read and extract cell surface proteins from CSPA DB
-        wb = openpyxl.load_workbook(SURFACE_PROTEINS_WB)
-        surface_protein_set = set(row[4].value for row in wb['Sheet 1'])
-
         ligand_genes = mgi_to_hgnc_name(seurat_ligand_genes)
         receptor_genes = mgi_to_hgnc_name(raw_receptor_genes)
-        ligand_terms = ['cytokine activity', 'hormone activity',
-                        'growth factor activity']
-        receptor_terms = ['signaling receptor activity']
-
-        ligand_go_ids = [bio_ontology.get_id_from_name('GO', term)[1]
-                         for term in ligand_terms]
-        receptor_go_ids = [bio_ontology.get_id_from_name('GO', term)[1]
-                           for term in receptor_terms]
-
-        ligand_genes_go = get_genes_for_go_ids(ligand_go_ids)
-        receptor_genes_go = get_genes_for_go_ids(receptor_go_ids)
-
-        # remove all the receptors from the surface_protein_set
-        surface_protein_ligands = surface_protein_set - receptor_genes_go
-        full_ligand_set = surface_protein_ligands.union(ligand_genes_go)
-
-        # Filtering out the nuclear receptors from the receptor list
-        receptor_genes_go = filter_nuclear_receptors(receptor_genes_go,
-                                                     'GO:0004879')
-
-        # Add ION channels to the receptor list
-        ion_channels = set()
-        with open(ION_CHANNELS, 'r') as fh:
-            for line in fh:
-                ion_channels.add(line.strip())
-        receptor_genes_go |= ion_channels
 
         ligands_in_data = ligand_genes & full_ligand_set
         receptors_in_data = receptor_genes & receptor_genes_go
-        # ligands_in_data.add('THBS1')
 
         logger.info(f'Loaded {len(ligands_in_data)} ligand genes from data')
         logger.info(f'Loaded {len(receptors_in_data)} receptor genes from data')
@@ -451,25 +470,6 @@ if __name__ == '__main__':
                                                       ligands_in_data,
                                                       indra_op_filtered)
 
-        ### Small molecule search
-
-        if not os.path.exists('stmts_inhibition.pkl'):
-            # Process TAS statements
-            tp = tas.process_from_web()
-
-            # Read drugbank database pickle
-            with open(DRUG_BANK_PKL, "rb") as fh:
-                dp = pickle.load(fh)
-
-            # Run preassembly on a list of statements
-            stmts = ac.run_preassembly(tp.statements + dp, return_toplevel=False,
-                                       run_refinement=False)
-
-            # Filter the statements to a given statement type
-            stmts_inhibition = ac.filter_by_type(stmts, 'Inhibition')
-        else:
-            with open('stmts_inhibition.pkl', 'rb') as fh:
-                stmts_inhibition = pickle.load(fh)
 
         targets_by_drug = defaultdict(set)
 
