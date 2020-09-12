@@ -325,8 +325,8 @@ def filter_out_medscan(stmts):
 if __name__ == '__main__':
     # Read and extract cell surface proteins from CSPA DB
     wb = openpyxl.load_workbook(SURFACE_PROTEINS_WB)
-    surface_protein_set = set(row[4].value for row in wb['Sheet 1'])
-
+    surface_protein_set = set(row[4].value for row in wb['Sheet 1']
+                              if row[6].value)
     ligand_terms = ['cytokine activity', 'hormone activity',
                     'growth factor activity']
     receptor_terms = ['signaling receptor activity']
