@@ -324,7 +324,6 @@ def filter_out_medscan(stmts):
 
 
 def get_cell_type_stats(stmts, ligands, receptors):
-    breakpoint()
     interactome = set()
     for stmt in stmts:
         stmt_ligands = {a.name for a in stmt.agent_list() if
@@ -344,6 +343,10 @@ if __name__ == '__main__':
                               if row[6].value == 'yes')
     logger.info('Got %d surface proteins from spreadsheet' %
                 len(surface_protein_set))
+<<<<<<< HEAD
+=======
+
+>>>>>>> Implement getting cell type stats
     ligand_terms = ['cytokine activity', 'hormone activity',
                     'growth factor activity']
     receptor_terms = ['signaling receptor activity']
