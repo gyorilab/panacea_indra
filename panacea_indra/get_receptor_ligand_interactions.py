@@ -344,7 +344,6 @@ if __name__ == '__main__':
                               if row[6].value == 'yes')
     logger.info('Got %d surface proteins from spreadsheet' %
                 len(surface_protein_set))
-
     ligand_terms = ['cytokine activity', 'hormone activity',
                     'growth factor activity']
     receptor_terms = ['signaling receptor activity']
