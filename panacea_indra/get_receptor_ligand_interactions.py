@@ -5,6 +5,7 @@ import pickle
 import logging
 import datetime
 import openpyxl
+import itertools
 import pandas as pd
 from indra.sources import tas
 from indra.util import batch_iter
@@ -322,11 +323,28 @@ def filter_out_medscan(stmts):
     return new_stmts
 
 
+def get_cell_type_stats(stmts, ligands, receptors):
+    breakpoint()
+    interactome = set()
+    for stmt in stmts:
+        stmt_ligands = {a.name for a in stmt.agent_list() if
+                        a.name in ligands}
+        stmt_receptors = {a.name for a in stmt.agent_list() if
+                          a.name in receptors}
+        for ligand, receptor in itertools.product(stmt_ligands,
+                                                  stmt_receptors):
+            interactome.add((ligand, receptor))
+    return len(interactome)
+
+
 if __name__ == '__main__':
     # Read and extract cell surface proteins from CSPA DB
     wb = openpyxl.load_workbook(SURFACE_PROTEINS_WB)
     surface_protein_set = set(row[4].value for row in wb['Sheet 1']
-                              if row[6].value)
+                              if row[6].value == 'yes')
+    logger.info('Got %d surface proteins from spreadsheet' %
+                len(surface_protein_set))
+
     ligand_terms = ['cytokine activity', 'hormone activity',
                     'growth factor activity']
     receptor_terms = ['signaling receptor activity']
@@ -386,6 +404,9 @@ if __name__ == '__main__':
             ns_order=default_ns_order + ['CHEMBL', 'PUBCHEM', 'DRUGBANK',
                                          'HMS-LINCS'])
         targets_by_drug[(stmt.subj.name, drug_grounding)].add(stmt.obj.name)
+
+    stmts_by_cell_type = {}
+    num_interactions_by_cell_type = {}
 
     # Looping over each file (cell type) and perform anylysis
     # for each cell type
@@ -456,6 +477,12 @@ if __name__ == '__main__':
                 OUTPUT, cell_type,
                 'indra_ligand_receptor_statements.pkl'), 'wb') as fh:
             pickle.dump(indra_op_filtered, fh)
+
+        stmts_by_cell_type[cell_type] = indra_op_filtered
+        num_interactions_by_cell_type[cell_type] = \
+            get_cell_type_stats(indra_op_filtered,
+                                ligands_in_data,
+                                receptors_in_data)
 
         # Assemble the statements into HTML formatted report and save into a file
         indra_op_html_report = \
