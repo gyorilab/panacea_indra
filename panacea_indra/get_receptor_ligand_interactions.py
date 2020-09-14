@@ -5,6 +5,7 @@ import pickle
 import logging
 import datetime
 import openpyxl
+import networkx
 import itertools
 import pandas as pd
 from indra.sources import tas
@@ -33,12 +34,12 @@ DATA_SPREADSHEET = os.path.join(INPUT, 'Neuroimmune gene list .xlsx')
 DRUG_BANK_PKL = os.path.join(INPUT, 'drugbank_5.1.pkl')
 ION_CHANNELS = os.path.join(INPUT, 'ion_channels.txt')
 SURFACE_PROTEINS_WB = os.path.join(INPUT, 'Surface Proteins.xlsx')
-IMMUNE_CELLTYPE_LIST = ['TwoGroups_DEG1_DCs_AJ',
-                        'TwoGroups_DEG1_Dermal Macs_AJ',
-                        'TwoGroups_DEG1_M2a_AJ',
-                        'TwoGroups_DEG1_M2b_AJ',
-                        'TwoGroups_DEG1_Monocytes_AJ',
-                        'TwoGroups_DEG1_Resident Mac_AJ']
+IMMUNE_CELLTYPE_LIST = ['DCs',
+                        'Dermal Macs',
+                        'M2a',
+                        'M2b',
+                        'Monocytes',
+                        'Resident Mac']
 
 logger = logging.getLogger('receptor_ligand_interactions')
 
@@ -336,6 +337,14 @@ def get_cell_type_stats(stmts, ligands, receptors):
     return len(interactome)
 
 
+def plot_interaction_potential(num_interactions_by_cell_type, fname):
+    G = networkx.DiGraph()
+    for cell_type, num_int in num_interactions_by_cell_type.items():
+        G.add_edge(cell_type, 'Neurons', label=num_int)
+    ag = networkx.nx_agraph.to_agraph(G)
+    ag.draw(fname, prog='dot')
+
+
 if __name__ == '__main__':
     # Read and extract cell surface proteins from CSPA DB
     wb = openpyxl.load_workbook(SURFACE_PROTEINS_WB)
@@ -416,11 +425,10 @@ if __name__ == '__main__':
         output_dir = os.path.join(OUTPUT, cell_type)
         if not os.path.exists(output_dir):
             os.mkdir(output_dir)
-        # get the file name and use it as its directory name
-        out_dir = cell_type.split(".")[0]
 
         # read the input (immune cell type) ligand file
-        LIGANDS_INFILE = os.path.join(INPUT, '%s.csv' % cell_type)
+        cell_type_full = 'TwoGroups_DEG1_%s_AJ' % cell_type
+        LIGANDS_INFILE = os.path.join(INPUT, '%s.csv' % cell_type_full)
 
         # Set current working directory
         # Collect lists of receptors and ligands based on GO annotations and
@@ -511,3 +519,6 @@ if __name__ == '__main__':
         df = get_small_mol_report(targets_by_drug, ligands_by_receptor,
                                   os.path.join(output_dir,
                                                'drug_targets.tsv'))
+
+plot_interaction_potential(num_interactions_by_cell_type,
+                           'interaction_potential.pdf')
