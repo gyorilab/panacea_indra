@@ -514,7 +514,7 @@ if __name__ == '__main__':
                                                       ligands_in_data,
                                                       indra_op_filtered)
 
-        df = get_small_mol_report(targets_by_drug, ligands_by_receptor,
+        df_mol_report = get_small_mol_report(targets_by_drug, ligands_by_receptor,
                                   os.path.join(output_dir,
                                                'drug_targets.tsv'))
 
