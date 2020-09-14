@@ -352,10 +352,6 @@ if __name__ == '__main__':
                               if row[6].value == 'yes')
     logger.info('Got %d surface proteins from spreadsheet' %
                 len(surface_protein_set))
-<<<<<<< HEAD
-=======
-
->>>>>>> Implement getting cell type stats
     ligand_terms = ['cytokine activity', 'hormone activity',
                     'growth factor activity']
     receptor_terms = ['signaling receptor activity']
@@ -382,6 +378,9 @@ if __name__ == '__main__':
         for line in fh:
             ion_channels.add(line.strip())
     receptor_genes_go |= ion_channels
+
+    # Load the INDRA DB DF
+    df = load_indra_df(INDRA_DB_PKL)
 
     # Fetch omnipath database biomolecular interactions and
     # process them into INDRA statements
@@ -448,7 +447,6 @@ if __name__ == '__main__':
         logger.info(f'Loaded {len(receptors_in_data)} receptor genes from data')
 
         # Now get INDRA DB Statements for the receptor-ligand pairs
-        df = load_indra_df(INDRA_DB_PKL)
         hashes_by_gene_pair = get_hashes_by_gene_pair(df, ligands_in_data,
                                                       receptors_in_data)
 
