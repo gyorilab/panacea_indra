@@ -442,6 +442,13 @@ if __name__ == '__main__':
 
         ligands_in_data = ligand_genes & full_ligand_set
         receptors_in_data = receptor_genes & receptor_genes_go
+        
+        ligands_df = pd.DataFrame(ligands_in_data,
+                                  columns=[cell_type+" Ligands"])
+        
+        # Save the ligands dataframe
+        ligands_df.to_csv(os.path.join(output_dir, "ligands_list.tsv"),
+                                       sep="\t", header=True, index=False)
 
         logger.info(f'Loaded {len(ligands_in_data)} ligand genes from data')
         logger.info(f'Loaded {len(receptors_in_data)} receptor genes from data')
