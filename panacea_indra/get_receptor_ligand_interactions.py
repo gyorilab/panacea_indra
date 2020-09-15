@@ -525,5 +525,5 @@ if __name__ == '__main__':
                                   os.path.join(output_dir,
                                                'drug_targets.tsv'))
 
-plot_interaction_potential(num_interactions_by_cell_type,
-                           'interaction_potential.pdf')
+    plot_interaction_potential(num_interactions_by_cell_type,
+                               'interaction_potential.pdf')
