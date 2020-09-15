@@ -415,6 +415,14 @@ if __name__ == '__main__':
                                          'HMS-LINCS'])
         targets_by_drug[(stmt.subj.name, drug_grounding)].add(stmt.obj.name)
 
+    # Collect lists of receptors based on GO annotations and
+    # by reading the data
+    _, raw_receptor_genes = read_workbook(DATA_SPREADSHEET)
+    receptor_genes = mgi_to_hgnc_name(raw_receptor_genes)
+    receptors_in_data = receptor_genes & receptor_genes_go
+    with open(os.path.join(OUTPUT, "receptors.csv"), 'w') as fh:
+        fh.write('\n'.join(sorted(receptors_in_data)))
+
     stmts_by_cell_type = {}
     num_interactions_by_cell_type = {}
 
@@ -430,25 +438,16 @@ if __name__ == '__main__':
         LIGANDS_INFILE = os.path.join(INPUT, '%s.csv' % cell_type_full)
 
         # Set current working directory
-        # Collect lists of receptors and ligands based on GO annotations and
-        # by reading the data
-        raw_ligand_genes, raw_receptor_genes = read_workbook(DATA_SPREADSHEET)
 
         # Extract markers from seurat dataframe with logFC >= 0.25
         seurat_ligand_genes = process_seurat_csv(LIGANDS_INFILE, 0.25)
 
         ligand_genes = mgi_to_hgnc_name(seurat_ligand_genes)
-        receptor_genes = mgi_to_hgnc_name(raw_receptor_genes)
 
         ligands_in_data = ligand_genes & full_ligand_set
-        receptors_in_data = receptor_genes & receptor_genes_go
-        
-        ligands_df = pd.DataFrame(ligands_in_data,
-                                  columns=[cell_type+" Ligands"])
-        
-        # Save the ligands dataframe
-        ligands_df.to_csv(os.path.join(output_dir, "ligands_list.tsv"),
-                                       sep="\t", header=True, index=False)
+
+        with open(os.path.join(output_dir, "ligands.csv"), 'w') as fh:
+            fh.write('\n'.join(sorted(ligands_in_data)))
 
         logger.info(f'Loaded {len(ligands_in_data)} ligand genes from data')
         logger.info(f'Loaded {len(receptors_in_data)} receptor genes from data')
@@ -526,4 +525,5 @@ if __name__ == '__main__':
                                                'drug_targets.tsv'))
 
     plot_interaction_potential(num_interactions_by_cell_type,
-                               'interaction_potential.pdf')
+                               os.path.join(OUTPUT,
+                                            'interaction_potential.pdf'))
