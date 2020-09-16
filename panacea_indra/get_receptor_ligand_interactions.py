@@ -315,12 +315,19 @@ def filter_out_medscan(stmts):
     return new_stmts
 
 
+def filter_db_only(stmts):
+    new_stmts = []
+    for stmt in stmts:
+        sources = {ev.source_api for ev in stmt.evidence}
+        if sources <= {'reach', 'sparser', 'trips', 'rlimsp', 'medscan', 'eidos'}:
+            continue
+        new_stmts.append(stmt)
+    return new_stmts
+
+
 def get_cell_type_stats(stmts, ligands, receptors):
     interactome = set()
     for stmt in stmts:
-        #sources = {ev.source_api for ev in stmt.evidence}
-        #if sources <= {'reach', 'sparser', 'trips', 'rlimsp', 'medscan', 'eidos'}:
-        #    continue
         stmt_ligands = {a.name for a in stmt.agent_list() if
                         a.name in ligands}
         stmt_receptors = {a.name for a in stmt.agent_list() if
@@ -432,8 +439,10 @@ if __name__ == '__main__':
     all_enzymes = get_controller_enzymes(['CHEBI:26333', 'CHEBI:3165'])
 
     stmts_by_cell_type = {}
+    stmts_db_by_cell_type = {}
     num_interactions_by_cell_type = {}
     possible_drug_targets = set()
+    possible_db_drug_targets = set()
 
     # Looping over each file (cell type) and perform anylysis
     # for each cell type
@@ -505,6 +514,7 @@ if __name__ == '__main__':
             pickle.dump(indra_op_filtered, fh)
 
         stmts_by_cell_type[cell_type] = indra_op_filtered
+        stmts_db_by_cell_type[cell_type] = filter_db_only(indra_op_filtered)
         num_interactions_by_cell_type[cell_type] = \
             get_cell_type_stats(indra_op_filtered,
                                 ligands_in_data,
@@ -532,11 +542,18 @@ if __name__ == '__main__':
         ligands_by_receptor = get_ligands_by_receptor(receptors_in_data,
                                                       ligands_in_data,
                                                       indra_op_filtered)
+        ligands_by_receptor_db = get_ligands_by_receptor(receptors_in_data,
+                                                      ligands_in_data,
+                                                      stmts_db_by_cell_type[cell_type])
 
         possible_drug_targets |= set(ligands_by_receptor.keys())
+        possible_db_drug_targets |= set(ligands_by_receptor_db.keys())
 
     get_small_mol_report(targets_by_drug, possible_drug_targets,
                          os.path.join(OUTPUT, 'drug_targets.tsv'))
+
+    get_small_mol_report(targets_by_drug, possible_db_drug_targets,
+                         os.path.join(OUTPUT, 'drug_targets_db.tsv'))
 
     plot_interaction_potential(num_interactions_by_cell_type,
                                os.path.join(OUTPUT,
