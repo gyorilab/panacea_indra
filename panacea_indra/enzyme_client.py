@@ -42,8 +42,20 @@ def filter_human(enzyme_data):
     return human_data
 
 
+def get_controller_enzymes(chebi_ids):
+    df = pd.read_csv(PC_SIF_URL, sep='\t', header=None)
+    df = df[df[1] == 'controls-production-of']
+
+    all_chebi_ids = set()
+    for chebi_id in chebi_ids:
+        all_chebi_ids |= {c[1] for c in
+                          bio_ontology.get_children('CHEBI', chebi_id)}
+
+    df = df[df[2].isin(all_chebi_ids)]
+    return set(df[0])
+
+
 if __name__ == "__main__":
-    filtered_stmts = []
     df = pd.read_csv(PC_SIF_URL, sep='\t', header=None)
     df = df[df[1] == 'controls-production-of']
 
