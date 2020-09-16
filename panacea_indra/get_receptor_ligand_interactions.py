@@ -327,6 +327,9 @@ def filter_out_medscan(stmts):
 def get_cell_type_stats(stmts, ligands, receptors):
     interactome = set()
     for stmt in stmts:
+        #sources = {ev.source_api for ev in stmt.evidence}
+        #if sources <= {'reach', 'sparser', 'trips', 'rlimsp', 'medscan', 'eidos'}:
+        #    continue
         stmt_ligands = {a.name for a in stmt.agent_list() if
                         a.name in ligands}
         stmt_receptors = {a.name for a in stmt.agent_list() if
@@ -338,8 +341,17 @@ def get_cell_type_stats(stmts, ligands, receptors):
 
 
 def plot_interaction_potential(num_interactions_by_cell_type, fname):
+    labels = {
+        'DCs': 'Dendritic cells',
+        'Dermal Macs': 'Dermal macrophages',
+        'M2a': 'Reparative macrophages (2a)',
+        'M2b': 'Reparative macrophages (2b)',
+        'Monocytes': 'Monocytes',
+        'Resident Mac': 'Resident macrophages',
+    }
     G = networkx.DiGraph()
     for cell_type, num_int in num_interactions_by_cell_type.items():
+        G.add_node(cell_type, label=labels[cell_type])
         G.add_edge(cell_type, 'Neurons', label=num_int)
     ag = networkx.nx_agraph.to_agraph(G)
     ag.draw(fname, prog='dot')
@@ -364,9 +376,12 @@ if __name__ == '__main__':
     ligand_genes_go = get_genes_for_go_ids(ligand_go_ids)
     receptor_genes_go = get_genes_for_go_ids(receptor_go_ids)
 
+    manual_ligands = {'THBS1'}
+
     # remove all the receptors from the surface_protein_set
     full_ligand_set = \
-        (surface_protein_set - receptor_genes_go) | ligand_genes_go
+        (surface_protein_set - receptor_genes_go) | ligand_genes_go | \
+        manual_ligands
 
     # Filtering out the nuclear receptors from the receptor list
     receptor_genes_go = filter_nuclear_receptors(receptor_genes_go,
@@ -510,12 +525,13 @@ if __name__ == '__main__':
         # Optional: Please configure the indra config file in
         # ~/.config/indra/config.ini with NDEx credentials to upload the
         # networks into the server
+        """
         indra_op_cx_report, ndex_network_id = \
             cx_assembler(
                 stmts_public,
                 fname=os.path.join(output_dir,
                                    'indra_ligand_receptor_report.cx'))
-
+        """
         ligands_by_receptor = get_ligands_by_receptor(receptors_in_data,
                                                       ligands_in_data,
                                                       indra_op_filtered)
