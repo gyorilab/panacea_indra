@@ -1,5 +1,4 @@
 import re
-import requests
 import pandas as pd
 from indra.ontology.bio import bio_ontology
 

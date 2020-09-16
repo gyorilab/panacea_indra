@@ -24,7 +24,7 @@ from indra.assemblers.cx.assembler import CxAssembler
 from indra_db.client.principal.curation import get_curations
 from indra.databases.hgnc_client import get_hgnc_from_mouse, get_hgnc_name
 
-from .enzyme_client import get_controller_enzymes
+from panacea_indra.enzyme_client import get_controller_enzymes
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 INPUT = os.path.join(HERE, os.pardir, 'input')
