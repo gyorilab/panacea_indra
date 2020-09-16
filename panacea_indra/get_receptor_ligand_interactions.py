@@ -24,6 +24,8 @@ from indra.assemblers.cx.assembler import CxAssembler
 from indra_db.client.principal.curation import get_curations
 from indra.databases.hgnc_client import get_hgnc_from_mouse, get_hgnc_name
 
+from .enzyme_client import get_controller_enzymes
+
 HERE = os.path.dirname(os.path.abspath(__file__))
 INPUT = os.path.join(HERE, os.pardir, 'input')
 OUTPUT = os.path.join(HERE, os.pardir, 'output')
@@ -263,11 +265,10 @@ def cx_assembler(indra_stmts, fname):
     return assembled_cx_report, ndex_network_id
 
 
-def get_small_mol_report(targets_by_drug, ligands_by_receptor, fname):
+def get_small_mol_report(targets_by_drug, potential_targets, fname):
     df = []
-    receptors_with_ligands = set(ligands_by_receptor.keys())
     for drug, targets in targets_by_drug.items():
-        targets_in_data = targets & receptors_with_ligands
+        targets_in_data = targets & potential_targets
         if not targets_in_data:
             continue
         df.append(
@@ -286,16 +287,6 @@ def get_small_mol_report(targets_by_drug, ligands_by_receptor, fname):
                                       ascending=False)
     df.to_csv(fname, sep="\t", header=True, index=False)
     return df
-
-
-def set_wd(x):
-    """Set working directory to the provided path"""
-    try:
-        os.chdir(x)
-        print("Working directory set to: "+os.getcwd())
-    except FileNotFoundError:
-        os.mkdir(x)
-        #sys.exit("Please provide a working path.")
 
 
 def get_ligands_by_receptor(receptors_in_data, ligands_in_data, stmts):
@@ -438,8 +429,11 @@ if __name__ == '__main__':
     with open(os.path.join(OUTPUT, "receptors.csv"), 'w') as fh:
         fh.write('\n'.join(sorted(receptors_in_data)))
 
+    all_enzymes = get_controller_enzymes(['CHEBI:26333', 'CHEBI:3165'])
+
     stmts_by_cell_type = {}
     num_interactions_by_cell_type = {}
+    possible_drug_targets = set()
 
     # Looping over each file (cell type) and perform anylysis
     # for each cell type
@@ -460,6 +454,9 @@ if __name__ == '__main__':
         ligand_genes = mgi_to_hgnc_name(seurat_ligand_genes)
 
         ligands_in_data = ligand_genes & full_ligand_set
+
+        enzymes_in_data = ligand_genes & all_enzymes
+        possible_drug_targets |= enzymes_in_data
 
         with open(os.path.join(output_dir, "ligands.csv"), 'w') as fh:
             fh.write('\n'.join(sorted(ligands_in_data)))
@@ -536,9 +533,10 @@ if __name__ == '__main__':
                                                       ligands_in_data,
                                                       indra_op_filtered)
 
-        df_mol_report = get_small_mol_report(targets_by_drug, ligands_by_receptor,
-                                  os.path.join(output_dir,
-                                               'drug_targets.tsv'))
+        possible_drug_targets |= set(ligands_by_receptor.keys())
+
+    get_small_mol_report(targets_by_drug, possible_drug_targets,
+                         os.path.join(OUTPUT, 'drug_targets.tsv'))
 
     plot_interaction_potential(num_interactions_by_cell_type,
                                os.path.join(OUTPUT,
