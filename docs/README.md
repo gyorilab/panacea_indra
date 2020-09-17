@@ -1,12 +1,15 @@
 Automated assembly of cell-type-specific mechanisms for the regulation of pain and inflammation with INDRA
 ==========================================================================================================
 
-<img align="left" src="https://raw.githubusercontent.com/sorgerlab/indra/master/doc/indra_logo.png" width="150" height="112" />
+<img align="left" src="https://raw.githubusercontent.com/sorgerlab/indra/master/doc/indra_logo.png" width="134" height="100" />
 INDRA integrates multiple text-mining systems and pathway databases to
-automatically extract mechanistic knowledge from the biomedical literature into
+automatically extract mechanistic knowledge from the biomedical literature and
+through a process of knowledge assembly, build
 executable models and causal networks. Based on profiling and perturbational
-data, these models can be contextualized to be cell-type specific and
+data, these models can be contextualized to be cell-type specific and used to
 explain experimental observations or to make predictions.
+
+
 
 In the context of the [`DARPA Panacea program`](https://www.darpa.mil/program/panacea),
 the [`INDRA team`](https://indralab.github.io/) at the
@@ -17,6 +20,7 @@ goal of finding new therapeutics using INDRA.
 - [Ion-channel mechanism knowledge base](#ion-channel-kb)
 - [Ion-channel inhibitor search](#ion-channel-inhibitor-search)
 - [A self-updating model of pain mechanisms](#pain-machine)
+- [Neuro-immune interactome](#neuroimmune)
 - [Funding](#funding)
 
 Ion-channel mechanism knowledge base
@@ -125,6 +129,20 @@ immediately as they become available.
 
 The EMMAA model representing pain mechanisms can be found
 [`here`](https://emmaa.indra.bio/dashboard/painmachine).
+
+Neuro-immune interactome
+------------------------
+Using transcriptional profiling of immune cells and neurons following injury, we are building
+cell-type specific models of how immune cells and pain sensing neurons interact.
+
+The latest set of cell-type specific interactions can be browsed on these pages:
+[`DCs`](https://bigmech.s3.amazonaws.com/panacea/neuroimmune/dcs.html)
+[`Monocytes`](https://bigmech.s3.amazonaws.com/panacea/neuroimmune/monocytes.html)
+[`Dermal macrophages`](https://bigmech.s3.amazonaws.com/panacea/neuroimmune/dermal_macs.html)
+[`Resident macrophages`](https://bigmech.s3.amazonaws.com/panacea/neuroimmune/resident_macs.html)
+[`M2a macrophages`](https://bigmech.s3.amazonaws.com/panacea/neuroimmune/m2a.html)
+[`M2b macrophages`](https://bigmech.s3.amazonaws.com/panacea/neuroimmune/m2b.html)
+
 
 Funding
 -------
