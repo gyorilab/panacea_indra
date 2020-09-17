@@ -91,6 +91,17 @@ to improve the models (see curation tutorial
 [`SCN8A`](https://bigmech.s3.amazonaws.com/panacea/ion_channels/SCN8A.html)
 [`SCN9A`](https://bigmech.s3.amazonaws.com/panacea/ion_channels/SCN9A.html)
 
+Ion channel inhibitor search
+----------------------------
+
+<img align="left" src="https://raw.githubusercontent.com/indralab/panacea_indra/website/docs/ion_channel_inhibitor_search.png" width="150" height="112" />
+The ion channel inhibitor search is an application that allows selecting some
+ion channels as "desirable" drug targets and others as "undesirable" drug targets.
+The application then searches all INDRA Statements in the ion channel knowledge
+base, combined with the [`Small Molecule Suite / Target Affintiy Spectrum`](https://labsyspharm.shinyapps.io/smallmoleculesuite/)
+data.
+
+The ion channel inhibitor search is available [`here`](http://34.230.33.149:5000/).
 
 A self-updating model of pain mechanisms
 ----------------------------------------
