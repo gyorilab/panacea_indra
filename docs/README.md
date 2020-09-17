@@ -21,6 +21,7 @@ goal of finding new therapeutics using INDRA.
 - [Ion-channel inhibitor search](#ion-channel-inhibitor-search)
 - [A self-updating model of pain mechanisms](#pain-machine)
 - [Neuro-immune interactome](#neuroimmune)
+- [General applications](#general)
 - [Funding](#funding)
 
 Ion-channel mechanism knowledge base
