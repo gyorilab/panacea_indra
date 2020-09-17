@@ -327,6 +327,7 @@ def filter_db_only(stmts):
 
 def get_cell_type_stats(stmts, ligands, receptors):
     interactome = set()
+    ligand_interactions = defaultdict(set)
     for stmt in stmts:
         stmt_ligands = {a.name for a in stmt.agent_list() if
                         a.name in ligands}
@@ -335,7 +336,8 @@ def get_cell_type_stats(stmts, ligands, receptors):
         for ligand, receptor in itertools.product(stmt_ligands,
                                                   stmt_receptors):
             interactome.add((ligand, receptor))
-    return len(interactome)
+            ligand_interactions[ligand].add(receptor)
+    return len(interactome), ligand_interactions
 
 
 def plot_interaction_potential(num_interactions_by_cell_type, fname):
@@ -441,6 +443,7 @@ if __name__ == '__main__':
     stmts_by_cell_type = {}
     stmts_db_by_cell_type = {}
     num_interactions_by_cell_type = {}
+    ligand_interactions_by_cell_type = {}
     possible_drug_targets = set()
     possible_db_drug_targets = set()
 
@@ -515,8 +518,9 @@ if __name__ == '__main__':
 
         stmts_by_cell_type[cell_type] = indra_op_filtered
         stmts_db_by_cell_type[cell_type] = filter_db_only(indra_op_filtered)
-        num_interactions_by_cell_type[cell_type] = \
-            get_cell_type_stats(indra_op_filtered,
+        num_interactions_by_cell_type[cell_type], \
+                ligand_interactions_by_cell_type[cell_type] = \
+            get_cell_type_stats(stmts_db_by_cell_type[cell_type],
                                 ligands_in_data,
                                 receptors_in_data)
 
