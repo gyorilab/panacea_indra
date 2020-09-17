@@ -47,12 +47,10 @@ query_cache = {}
 class ChannelSearchForm(FlaskForm):
     inhibits = SelectMultipleField(label='inhibit all of...',
                                    id='inhibit-select',
-                                   choices=channel_labels,
-                                   validators=[validators.unicode_literals])
+                                   choices=channel_labels)
     not_inhibits = SelectMultipleField(label='and not inhibit any of...',
                                        id='not-inhibit-select',
-                                       choices=channel_labels,
-                                       validators=[validators.unicode_literals])
+                                       choices=channel_labels)
     submit_button = SubmitField('Search')
 
 
@@ -113,4 +111,4 @@ if __name__ == '__main__':
         port = int(sys.argv[1])
     else:
         port = 5000
-    app.run(port=port)
+    app.run(host='0.0.0.0', port=port)
