@@ -17,7 +17,6 @@ goal of finding new therapeutics using INDRA.
 - [Ion-channel mechanism knowledge base](#ion-channel-kb)
 - [Ion-channel inhibitor search](#ion-channel-inhibitor-search)
 - [A self-updating model of pain mechanisms](#pain-machine)
-- [Neuro-immune interactome](#neuroimmune)
 - [Funding](#funding)
 
 Ion-channel mechanism knowledge base
@@ -25,10 +24,10 @@ Ion-channel mechanism knowledge base
 
 <img align="left" src="https://raw.githubusercontent.com/indralab/panacea_indra/website/docs/ion_channel_kb_network.png" width="150" height="112" />
 
-We used INDRA to assemble all mechanisms that 65 ion channels that are
+We used INDRA to assemble all mechanisms that 65 ion-channels that are
 particularly important for nociception are involved in.
 
-Each ion channel's interactions can be browsed as networks at
+Each ion-channel's interactions can be browsed as networks at
 [`NDEx`](http://ndexbio.org/#/networkset/8f22b3bf-21d8-11ea-bb65-0ac135e8bacf).
 
 And the literature evidence can be inspected on the pages linked to below. These
@@ -102,17 +101,17 @@ to improve the models (see curation tutorial
 [`SCN8A`](https://bigmech.s3.amazonaws.com/panacea/ion_channels/SCN8A.html)
 [`SCN9A`](https://bigmech.s3.amazonaws.com/panacea/ion_channels/SCN9A.html)
 
-Ion channel inhibitor search
+Ion-channel inhibitor search
 ----------------------------
 
 <img align="left" src="https://raw.githubusercontent.com/indralab/panacea_indra/website/docs/ion_channel_inhibitor_search.png" width="150" height="112" />
-The ion channel inhibitor search is an application that allows selecting some
-ion channels as "desirable" drug targets and others as "undesirable" drug targets.
-The application then searches all INDRA Statements in the ion channel knowledge
+The ion-channel inhibitor search is an application that allows selecting some
+ion-channels as "desirable" drug targets and others as "undesirable" drug targets.
+The application then searches all INDRA Statements in the ion-channel knowledge
 base, combined with the [`Small Molecule Suite / Target Affintiy Spectrum`](https://labsyspharm.shinyapps.io/smallmoleculesuite/)
 data.
 
-The ion channel inhibitor search is available [`here`](http://34.230.33.149:5000/).
+The ion-channel inhibitor search is available [`here`](http://34.230.33.149:5000/).
 
 A self-updating model of pain mechanisms
 ----------------------------------------
