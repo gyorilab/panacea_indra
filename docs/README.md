@@ -2,6 +2,17 @@ Automated assembly of cell-type-specific mechanisms for the regulation of pain a
 ==========================================================================================================
 
 <img align="left" src="https://raw.githubusercontent.com/sorgerlab/indra/master/doc/indra_logo.png" width="150" height="112" />
+INDRA integrates multiple text-mining systems and pathway databases to
+automatically extract mechanistic knowledge from the biomedical literature into
+executable models and causal networks. Based on profiling and perturbational
+data, these models can be contextualized to be cell-type specific and
+explain experimental observations or to make predictions.
+
+In the context of the [`DARPA Panacea program`](https://www.darpa.mil/program/panacea),
+the [`INDRA team`](https://indralab.github.io/) at the
+[`Laboratory of Systems Pharmacology, Harvard Medical School`](https://hits.harvard.edu/)
+is working on understanding the regulation of pain and inflammation with the
+goal of finding new therapeutics using INDRA.
 
 - [Ion-channel mechanism knowledge base](#ion-channel-kb)
 - [Ion-channel inhibitor search](#ion-channel-inhibitor-search)
