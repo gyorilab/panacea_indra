@@ -114,7 +114,8 @@ The ion-channel inhibitor search is an application that allows selecting some
 ion-channels as "desirable" drug targets and others as "undesirable" drug targets.
 The application then searches all INDRA Statements in the ion-channel knowledge
 base, combined with the [`Small Molecule Suite / Target Affintiy Spectrum`](https://labsyspharm.shinyapps.io/smallmoleculesuite/)
-data.
+data to find regulators (drugs or other entities that may be relevant) with
+the desired properties.
 
 The ion-channel inhibitor search is available [`here`](http://34.230.33.149:5000/).
 
@@ -133,7 +134,8 @@ The EMMAA model representing pain mechanisms can be found
 
 Neuro-immune interactome
 ------------------------
-Using transcriptional profiling of immune cells and neurons following injury, we are building
+Using transcriptional data collected in the [`Woolf lab`](https://kirbyneuro.org/WoolfLab/)
+of immune cells and neurons following injury, we are building
 cell-type specific models of how immune cells and pain sensing neurons interact.
 
 The latest set of cell-type specific interactions can be browsed on these pages:
