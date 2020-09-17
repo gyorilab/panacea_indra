@@ -162,6 +162,9 @@ mechanisms.
   launching dedicated human-machine dialogue sessions where you can upload your
   data (e.g., DE gene lists or gene expression profiles), discuss relevant
   mechanisms, and build model hypotheses using simple English dialogue.
+  For instance, you could try the following series of questions:
+  "what is Nav1.8?", "what does it regulate?",
+  "which of those are transcription factors?".
 
 Funding
 -------
