@@ -13,10 +13,13 @@ Ion-channel mechanism knowledge base
 ------------------------------------
 We used INDRA to assemble all mechanisms that 65 ion channels that are
 particularly important for nociception are involved in.
-Each ion channel's interactions can be browsed as networks on
+
+
+<img align="left" src="https://raw.githubusercontent.com/indralab/panacea_indra/website/docs/ion_channel_kb_network.png" width="150" height="112" />
+Each ion channel's interactions can be browsed as networks at
 [`NDEx`](http://ndexbio.org/#/networkset/8f22b3bf-21d8-11ea-bb65-0ac135e8bacf).
 
-And the literature evidence can be inspected as
+And the literature evidence can be inspected [`here`](ion_channels.html)
 
 
 A self-updating model of pain mechanisms
