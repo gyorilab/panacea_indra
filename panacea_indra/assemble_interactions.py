@@ -22,7 +22,7 @@ def assemble_cx(stmts_with_counts):
 
 
 if __name__ == '__main__':
-    with open('../ion_channel_stmts_v3.pkl', 'rb') as fh:
+    with open('../ion_channel_stmts_v4.pkl', 'rb') as fh:
         stmts_with_counts = pickle.load(fh)
     for channel, (stmts, ev_counts, source_counts) in stmts_with_counts.items():
         for stmt in stmts:

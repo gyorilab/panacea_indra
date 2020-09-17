@@ -6,10 +6,10 @@ from indra.databases import hgnc_client
 from indra.sources.indra_db_rest import get_statements
 from indra.preassembler.grounding_mapper import GroundingMapper
 #from indra.tools.reground_statements import get_cleaned_statements
-from indra_db.client import get_statements_by_gene_role_type
+#from indra_db.client import get_statements_by_gene_role_type
 
 
-db_mode = 'db'  # 'api'
+db_mode = 'api'  # 'db'
 
 
 def get_channel_agent(channel):
@@ -90,7 +90,7 @@ def print_statistics(statements):
 if __name__ == '__main__':
     fname = 'data/gene_list.txt'
     with open(fname, 'r') as fh:
-        channels = [l.strip() for l in fh.readlines()]
+        channels = [l.split()[0] for l in fh.readlines()]
 
     fname = 'data/IDG_target_final.csv'
     df = pandas.read_csv(fname)
@@ -101,6 +101,6 @@ if __name__ == '__main__':
     print('Read a total of %d channels from %s' % (len(channels), fname))
 
     stmts_with_counts = get_channel_statements(channels)
-    with open('ion_channel_stmts_v3.pkl', 'wb') as fh:
+    with open('ion_channel_stmts_v4.pkl', 'wb') as fh:
         pickle.dump(stmts_with_counts, fh)
     print_statistics(stmts_with_counts)

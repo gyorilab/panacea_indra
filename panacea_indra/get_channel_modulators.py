@@ -11,7 +11,7 @@ with open('../ion_channel_regulators.pkl', 'rb') as fh:
     neg_regs, non_neg_regs = pickle.load(fh)
 
 
-with open('../ion_channel_stmts_v3.pkl', 'rb') as fh:
+with open('../ion_channel_stmts_v4.pkl', 'rb') as fh:
     stmts_by_channel = pickle.load(fh)
 
 
