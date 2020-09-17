@@ -143,6 +143,24 @@ The latest set of cell-type specific interactions can be browsed on these pages:
 [`M2a macrophages`](https://bigmech.s3.amazonaws.com/panacea/neuroimmune/m2a.html)
 [`M2b macrophages`](https://bigmech.s3.amazonaws.com/panacea/neuroimmune/m2b.html)
 
+General INDRA applications
+--------------------------
+There are several applications built on top of INDRA that that are generally
+applicable to biomedical research and can therefore also be used to study pain
+mechanisms.
+- [`INDRA database`](https://db.indra.bio): The INDRA database website provides
+  a search interface to find INDRA Statements assembled from the biomedical
+  literature, browse their supporting evidence, and curate any errors.  Az
+  example search relevant to Panacea is Object: SCN10A to find entities that
+  regulate the Nav 1.8 ion channel.
+- [`INDRA network search`](https://network.indra.bio): The INDRA network search
+  allows finding causal paths, shared regulators, and common targets between
+  two entities. An example search relevant to Panacea is Subject: bradykinin,
+  Object: PKC (see [`here`](https://network.indra.bio/query?query=2094257329)).
+- [`Dialogue.bio`](http://dialogue.bio): The dialogue.bio website allows
+  launching dedicated human-machine dialogue sessions where you can upload your
+  data (e.g., DE gene lists or gene expression profiles), discuss relevant
+  mechanisms, and build model hypotheses using simple English dialogue.
 
 Funding
 -------
