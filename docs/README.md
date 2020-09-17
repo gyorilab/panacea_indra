@@ -25,6 +25,7 @@ And the literature evidence can be inspected [`here`](ion_channels.html)
 A self-updating model of pain mechanisms
 ----------------------------------------
 
+<img align="left" src="https://raw.githubusercontent.com/indralab/panacea_indra/website/docs/painmachine_image.png" width="150" height="112" />
 EMMAA (Ecosystem of Machine-maintained Models with Automated Analysis) makes
 available a set of
 computational models that are kept up-to-date using automated machine reading,
