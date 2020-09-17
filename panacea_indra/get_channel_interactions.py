@@ -25,7 +25,7 @@ def get_channel_statements(channels, ev_limit=100):
         hgnc_id = hgnc_client.get_hgnc_id(channel)
         if db_mode == 'api':
             idbp = get_statements(agents=[channel], ev_limit=ev_limit,
-                                  best_first=False)
+                                  best_first=True)
             ev_counts = {int(k): v for k, v in idbp.get_ev_counts().items()}
             source_counts = idbp.get_source_counts()
             stmts = idbp.statements
@@ -34,7 +34,7 @@ def get_channel_statements(channels, ev_limit=100):
                                                      agent_id=hgnc_id)
             ev_counts = {}
             source_counts = {}
-        #stmts = filter_out_medscan(stmts, source_counts)
+        stmts = filter_out_medscan(stmts, source_counts)
         #stmts = get_cleaned_statements(stmts, get_channel_agent(channel))
         stmts = filter_out_other_channels(channel, stmts,
                                           all_channel_gene_names)
@@ -58,6 +58,7 @@ def filter_out_medscan(stmts, source_counts):
             new_evidence.append(ev)
         if not non_medscan_evidence(stmt, source_counts):
             continue
+        stmt.evidence = new_evidence
         new_stmts.append(stmt)
     return new_stmts
 
@@ -100,7 +101,7 @@ if __name__ == '__main__':
     all_channel_gene_names = sorted(list(df['gene']))
     print('Read a total of %d channels from %s' % (len(channels), fname))
 
-    stmts_with_counts = get_channel_statements(channels)
+    stmts_with_counts = get_channel_statements(channels, ev_limit=1000)
     with open('ion_channel_stmts_v4.pkl', 'wb') as fh:
         pickle.dump(stmts_with_counts, fh)
     print_statistics(stmts_with_counts)
