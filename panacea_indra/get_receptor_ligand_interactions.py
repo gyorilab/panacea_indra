@@ -1,6 +1,8 @@
 import os
 import sys
 import tqdm
+import pyobo
+import obonet
 import pickle
 import logging
 import datetime
@@ -8,19 +10,20 @@ import openpyxl
 import networkx
 import itertools
 import pandas as pd
+from pathlib import Path
 from indra.sources import tas
 from indra.util import batch_iter
 from collections import defaultdict
 from indra.statements import Complex
 from indra.sources import indra_db_rest
 import indra.tools.assemble_corpus as ac
-from indra.databases import uniprot_client
 from indra.ontology.bio import bio_ontology
 from indra.databases.uniprot_client import um
 from indra.assemblers.html import HtmlAssembler
 from indra.statements.agent import default_ns_order
 from indra.sources.omnipath import process_from_web
 from indra.assemblers.cx.assembler import CxAssembler
+from indra.databases import uniprot_client, hgnc_client
 from indra_db.client.principal.curation import get_curations
 from indra.databases.hgnc_client import get_hgnc_from_mouse, get_hgnc_name
 
@@ -44,7 +47,6 @@ IMMUNE_CELLTYPE_LIST = ['DCs',
                         'Resident Mac']
 
 logger = logging.getLogger('receptor_ligand_interactions')
-
 
 mouse_gene_name_to_mgi = {v: um.uniprot_mgi.get(k)
                           for k, v in um.uniprot_gene_name.items()
@@ -194,7 +196,7 @@ def process_seurat_csv(infile, fc):
     """ Process Seurat dataframe and only filter in
     genes with the given Fold change """
     df = pd.read_csv(infile, header=0, sep=",")
-    df.columns = df.columns.str.replace('Unnamed: 0','Genes')
+    df.columns = df.columns.str.replace('Unnamed: 0', 'Genes')
     filtered_markers = df[df.avg_logFC > fc]['Genes']
     return set(filtered_markers)
 
@@ -276,7 +278,7 @@ def get_small_mol_report(targets_by_drug, potential_targets, fname):
                 "Drug": drug[0],
                 "ID": '%s:%s' % (drug[1]),
                 "Named": 0 if drug[0].startswith('CHEMBL') else 1,
-                "Score": "{:.3f}".format(len(targets_in_data)/len(targets)),
+                "Score": "{:.3f}".format(len(targets_in_data) / len(targets)),
                 "Number of targets in data": len(targets_in_data),
                 "Targets in data": ", ".join(sorted(targets_in_data)),
                 "Other targets": ", ".join(sorted(targets - targets_in_data)),
@@ -355,6 +357,26 @@ def plot_interaction_potential(num_interactions_by_cell_type, fname):
         G.add_edge(cell_type, 'Neurons', label=num_int)
     ag = networkx.nx_agraph.to_agraph(G)
     ag.draw(fname, prog='dot')
+
+
+def get_all_enzymes():
+    HOME = str(Path.home())
+    ec_code_path = '.obo/raw/ec-code/ec-code.obo'
+    if not os.path.exists(os.path.join(HOME, ec_code_path)):
+        _ = pyobo.get_id_name_mapping('ec-code')
+        obo = obonet.read_obo(os.path.join(HOME, ec_code_path))
+    else:
+        obo = obonet.read_obo(os.path.join(HOME, ec_code_path))
+    up_nodes = set()
+    for node in obo.nodes:
+        if node.startswith('uniprot'):
+            up_nodes.add(node[8:])
+    human_ups = {u for u in up_nodes if uniprot_client.is_human(u)}
+    enzymes = {uniprot_client.get_gene_name(u) for u in human_ups}
+    enzymes = {g for g in enzymes if not hgnc_client.is_kinase(g)}
+    enzymes = {g for g in enzymes if not hgnc_client.is_phosphatase(g)}
+    logger.info(f'Filtered {len(enzymes)} enzymes in total')
+    return enzymes
 
 
 if __name__ == '__main__':
@@ -438,7 +460,8 @@ if __name__ == '__main__':
     with open(os.path.join(OUTPUT, "receptors.csv"), 'w') as fh:
         fh.write('\n'.join(sorted(receptors_in_data)))
 
-    all_enzymes = get_controller_enzymes(['CHEBI:26333', 'CHEBI:3165'])
+    # all_enzymes = get_controller_enzymes(['CHEBI:26333', 'CHEBI:3165'])
+    all_enzymes = get_all_enzymes()
 
     stmts_by_cell_type = {}
     stmts_db_by_cell_type = {}
@@ -446,6 +469,7 @@ if __name__ == '__main__':
     ligand_interactions_by_cell_type = {}
     possible_drug_targets = set()
     possible_db_drug_targets = set()
+    de_enzyme_list = set()
 
     # Looping over each file (cell type) and perform anylysis
     # for each cell type
@@ -469,6 +493,7 @@ if __name__ == '__main__':
 
         enzymes_in_data = ligand_genes & all_enzymes
         possible_drug_targets |= enzymes_in_data
+        de_enzyme_list |= enzymes_in_data
 
         with open(os.path.join(output_dir, "ligands.csv"), 'w') as fh:
             fh.write('\n'.join(sorted(ligands_in_data)))
@@ -519,7 +544,7 @@ if __name__ == '__main__':
         stmts_by_cell_type[cell_type] = indra_op_filtered
         stmts_db_by_cell_type[cell_type] = filter_db_only(indra_op_filtered)
         num_interactions_by_cell_type[cell_type], \
-                ligand_interactions_by_cell_type[cell_type] = \
+        ligand_interactions_by_cell_type[cell_type] = \
             get_cell_type_stats(stmts_db_by_cell_type[cell_type],
                                 ligands_in_data,
                                 receptors_in_data)
@@ -547,8 +572,8 @@ if __name__ == '__main__':
                                                       ligands_in_data,
                                                       indra_op_filtered)
         ligands_by_receptor_db = get_ligands_by_receptor(receptors_in_data,
-                                                      ligands_in_data,
-                                                      stmts_db_by_cell_type[cell_type])
+                                                         ligands_in_data,
+                                                         stmts_db_by_cell_type[cell_type])
 
         possible_drug_targets |= set(ligands_by_receptor.keys())
         possible_db_drug_targets |= set(ligands_by_receptor_db.keys())
@@ -562,3 +587,7 @@ if __name__ == '__main__':
     plot_interaction_potential(num_interactions_by_cell_type,
                                os.path.join(OUTPUT,
                                             'interaction_potential.pdf'))
+    # Save the DE enzyme list to a file
+    with open(os.path.join(OUTPUT,
+                           'human_de_enzyme_list.txt'), 'w') as fh:
+        fh.writelines("%s\n" % enzyme for enzyme in de_enzyme_list)
