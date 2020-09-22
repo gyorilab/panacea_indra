@@ -68,7 +68,7 @@ def get_enzyme_stmts(de_enzymes):
 
     # If there are any CHEBI ID's, then convert
     # their ID's to names
-    filtered_df = pd.Dataframe(filtered_df)
+    filtered_df = pd.DataFrame(filtered_df)
     for rows, s in filtered_df.iterrows():
         if s[2].startswith("CHEBI"):
             filtered_df['mol'][rows] = bio_ontology.get_name('CHEBI',
