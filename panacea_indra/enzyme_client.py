@@ -54,6 +54,28 @@ def get_controller_enzymes(chebi_ids):
     return set(df[0])
 
 
+def get_enzyme_stmts(de_enzymes):
+    df = pd.read_csv(PC_SIF_URL, sep='\t', header=None)
+    filtered_df = [
+        {
+            'Enzyme': s[0],
+            'Statement': s[1],
+            'mol': s[2]
+        }
+        for _, s in df.iterrows()
+            if s[0] in de_enzymes
+    ]
+
+    # If there are any CHEBI ID's, then convert
+    # their ID's to names
+    filtered_df = pd.Dataframe(filtered_df)
+    for rows, s in filtered_df.iterrows():
+        if s[2].startswith("CHEBI"):
+            filtered_df['mol'][rows] = bio_ontology.get_name('CHEBI',
+                                                             s[2])
+    return filtered_df
+
+
 if __name__ == "__main__":
     df = pd.read_csv(PC_SIF_URL, sep='\t', header=None)
     df = df[df[1] == 'controls-production-of']
