@@ -27,8 +27,9 @@ from indra.databases import uniprot_client, hgnc_client
 from indra_db.client.principal.curation import get_curations
 from indra.databases.hgnc_client import get_hgnc_from_mouse, get_hgnc_name
 
-from panacea_indra.enzyme_client import get_controller_enzymes, get_enzyme_stmts
+#from panacea_indra.enzyme_client import get_controller_enzymes
 
+from enzyme.enzyme_client import get_enzyme_stmts
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 INPUT = os.path.join(HERE, os.pardir, 'input')
@@ -495,8 +496,8 @@ if __name__ == '__main__':
         enzymes_in_data = ligand_genes & all_enzymes
         de_enzyme_stmts = get_enzyme_stmts(enzymes_in_data)
         
-        de_enzyme_stmts.to_csv("de_enzymes_stmts.tsv", sep="\t",
-                               header=True, index=False)
+        de_enzyme_stmts.to_csv(os.path.join(output_dir, "de_enzymes_stmts.tsv"),
+                               sep="\t", header=True, index=False)
         
         possible_drug_targets |= enzymes_in_data
         de_enzyme_list |= enzymes_in_data
