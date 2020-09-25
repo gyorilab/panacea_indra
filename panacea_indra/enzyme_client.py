@@ -59,8 +59,8 @@ def get_enzyme_products(de_enzymes):
     filtered_df = [
         {
             'Enzyme': s[0],
-            'Statement': s[1],
-            'mol': s[2]
+            'Interaction': s[1],
+            'product': s[2]
         }
         for _, s in df.iterrows()
             if s[0] in de_enzymes
@@ -71,10 +71,24 @@ def get_enzyme_products(de_enzymes):
     filtered_df = pd.DataFrame(filtered_df)
     for rows, s in filtered_df.iterrows():
         if s[2].startswith("CHEBI"):
-            filtered_df['mol'][rows] = bio_ontology.get_name('CHEBI',
-                                                             s[2])
+            filtered_df['product'][rows] = \
+            bio_ontology.get_name('CHEBI', s[2])
     return filtered_df
 
+
+def get_pain_interactions(df, PAIN_MOL_NAMES):
+    celltype_pain_interaction = [
+    {"Enzyme":rows[0],
+     "Interaction":rows[1],
+     "Product":rows[2]
+    }
+    for _, rows in df.iterrows()
+    for compound, names in PAIN_MOL_NAMES.items()
+     if rows[2] in names
+    ]
+    df = pd.DataFrame(celltype_pain_interaction)
+    return df
+    
 
 if __name__ == "__main__":
     df = pd.read_csv(PC_SIF_URL, sep='\t', header=None)

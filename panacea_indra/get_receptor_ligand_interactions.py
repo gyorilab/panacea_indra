@@ -10,6 +10,7 @@ import openpyxl
 import networkx
 import itertools
 import pandas as pd
+import enzyme_client
 from pathlib import Path
 from indra.sources import tas
 from indra.util import batch_iter
@@ -26,7 +27,6 @@ from indra.assemblers.cx.assembler import CxAssembler
 from indra.databases import uniprot_client, hgnc_client
 from indra_db.client.principal.curation import get_curations
 from indra.databases.hgnc_client import get_hgnc_from_mouse, get_hgnc_name
-from panacea_indra.enzyme_client import get_controller_enzymes, get_enzyme_products
 
 
 
@@ -89,6 +89,29 @@ def _load_goa_gaf():
 
 
 goa = _load_goa_gaf()
+
+
+def get_pain_mol():
+    PAIN_SIGNAL_MOL = {
+            "Prostaglandins": "CHEBI:26333",
+            "Brandykinin": "CHEBI:3165"
+        }
+
+    CHEBI_LIST = {}
+    CHEBI_NAMES = {}
+    for compounds, chebi_id in PAIN_SIGNAL_MOL.items():
+        CHEBI_LIST[compounds] = \
+        [children[1] for children in
+         bio_ontology.get_children('CHEBI',
+                                   chebi_id)]
+        
+        CHEBI_NAMES[compounds] = \
+        [bio_ontology.get_name('CHEBI', ids)
+         for ids in CHEBI_LIST[compounds]]
+        
+    return CHEBI_NAMES
+
+PAIN_MOL_NAMES = get_pain_mol()
 
 
 def load_indra_df(fname):
@@ -493,9 +516,13 @@ if __name__ == '__main__':
         ligands_in_data = ligand_genes & full_ligand_set
 
         enzymes_in_data = ligand_genes & all_enzymes
-        de_enzyme_stmts = get_enzyme_products(enzymes_in_data)
+        de_enzyme_stmts = enzyme_client.get_enzyme_products(enzymes_in_data)
+        pain_interactions = enzyme_client.get_pain_interactions(de_enzyme_stmts,
+                                                 PAIN_MOL_NAMES)
         
-        de_enzyme_stmts.to_csv(os.path.join(output_dir, "de_enzymes_stmts.tsv"),
+        de_enzyme_stmts.to_csv(os.path.join(output_dir, cell_type+"_de_enzymes_stmts.tsv"),
+                               sep="\t", header=True, index=False)
+        pain_interactions.to_csv(os.path.join(output_dir, cell_type+"_enzyme_pain_interactions.tsv"),
                                sep="\t", header=True, index=False)
         
         possible_drug_targets |= enzymes_in_data
