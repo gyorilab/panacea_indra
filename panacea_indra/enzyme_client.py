@@ -54,7 +54,7 @@ def get_controller_enzymes(chebi_ids):
     return set(df[0])
 
 
-def get_enzyme_stmts(de_enzymes):
+def get_enzyme_products(de_enzymes):
     df = pd.read_csv(PC_SIF_URL, sep='\t', header=None)
     filtered_df = [
         {
