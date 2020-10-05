@@ -494,6 +494,7 @@ if __name__ == '__main__':
     possible_drug_targets = set()
     possible_db_drug_targets = set()
     de_enzyme_list = set()
+    de_enzyme_product_list = set()
 
     # Looping over each file (cell type) and perform anylysis
     # for each cell type
@@ -518,7 +519,7 @@ if __name__ == '__main__':
         enzymes_in_data = ligand_genes & all_enzymes
         de_enzyme_stmts = enzyme_client.get_enzyme_products(enzymes_in_data)
         pain_interactions = enzyme_client.get_pain_interactions(de_enzyme_stmts,
-                                                 PAIN_MOL_NAMES)
+                                                                PAIN_MOL_NAMES)
         
         de_enzyme_stmts.to_csv(os.path.join(output_dir, cell_type+"_de_enzymes_stmts.tsv"),
                                sep="\t", header=True, index=False)
@@ -527,6 +528,7 @@ if __name__ == '__main__':
         
         possible_drug_targets |= enzymes_in_data
         de_enzyme_list |= enzymes_in_data
+        de_enzyme_product_list |= de_enzyme_stmts
 
         with open(os.path.join(output_dir, "ligands.csv"), 'w') as fh:
             fh.write('\n'.join(sorted(ligands_in_data)))
@@ -624,3 +626,8 @@ if __name__ == '__main__':
     with open(os.path.join(OUTPUT,
                            'human_de_enzyme_list.txt'), 'w') as fh:
         fh.writelines("%s\n" % enzyme for enzyme in de_enzyme_list)
+
+    # Save the DE enzyme product list to a file
+    with open(os.path.join(OUTPUT,
+                           'de_enzyme_product_list.txt'), 'w') as fh:
+        fh.writelines("%s\n" % enzyme_p for enzyme_p in de_enzyme_product_list)

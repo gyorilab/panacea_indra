@@ -63,7 +63,7 @@ def get_enzyme_products(de_enzymes):
             'product': s[2]
         }
         for _, s in df.iterrows()
-            if s[0] in de_enzymes
+            if s[0] in de_enzymes and re.match('controls-production-of', s[1])
     ]
 
     # If there are any CHEBI ID's, then convert
