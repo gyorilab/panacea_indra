@@ -403,6 +403,19 @@ def get_all_enzymes():
     return enzymes
 
 
+def get_de_product_list(de_enzyme_product_list,
+                        de_enzyme_stmts):
+    if len(de_enzyme_product_list) > 1:
+        de_enzyme_product_list = pd.merge(de_enzyme_stmts, de_enzyme_product_list,
+                                          on=['Enzyme', 'Interaction', 'product'],
+                                          how="outer").fillna('')
+        return de_enzyme_product_list
+
+    elif len(de_enzyme_product_list) < 1:
+        de_enzyme_product_list = de_enzyme_stmts
+        return de_enzyme_product_list
+
+
 if __name__ == '__main__':
     # Read and extract cell surface proteins from CSPA DB
     wb = openpyxl.load_workbook(SURFACE_PROTEINS_WB)
@@ -528,7 +541,8 @@ if __name__ == '__main__':
         
         possible_drug_targets |= enzymes_in_data
         de_enzyme_list |= enzymes_in_data
-        de_enzyme_product_list |= de_enzyme_stmts
+        de_enzyme_product_list = get_de_product_list(de_enzyme_product_list,
+                                                     de_enzyme_stmts)
 
         with open(os.path.join(output_dir, "ligands.csv"), 'w') as fh:
             fh.write('\n'.join(sorted(ligands_in_data)))
@@ -627,7 +641,7 @@ if __name__ == '__main__':
                            'human_de_enzyme_list.txt'), 'w') as fh:
         fh.writelines("%s\n" % enzyme for enzyme in de_enzyme_list)
 
-    # Save the DE enzyme product list to a file
-    with open(os.path.join(OUTPUT,
-                           'de_enzyme_product_list.txt'), 'w') as fh:
-        fh.writelines("%s\n" % enzyme_p for enzyme_p in de_enzyme_product_list)
+        
+    # Save the DE enzyme product list to a csv file
+    de_enzyme_product_list.to_csv(os.path.join(OUTPUT, "de_enzyme_products.csv"),
+                                  index=False)
