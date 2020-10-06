@@ -216,12 +216,13 @@ def read_workbook(workbook):
     return ligands, receptors
 
 
-def process_seurat_csv(infile, fc):
+def process_seurat_csv(infile, fc, pval):
     """ Process Seurat dataframe and only filter in
     genes with the given Fold change """
     df = pd.read_csv(infile, header=0, sep=",")
     df.columns = df.columns.str.replace('Unnamed: 0', 'Genes')
-    filtered_markers = df[df.avg_logFC > fc]['Genes']
+    filtered_markers = df[(df.avg_logFC > fc) &
+                          (df.p_val_adj <= pval)]['Genes']
     return set(filtered_markers)
 
 
@@ -522,8 +523,11 @@ if __name__ == '__main__':
 
         # Set current working directory
 
-        # Extract markers from seurat dataframe with logFC >= 0.25
-        seurat_ligand_genes = process_seurat_csv(LIGANDS_INFILE, 0.25)
+        # Extract markers from seurat dataframe with logFC >= 0.25 and
+        # pval <= 0.05
+        seurat_ligand_genes = process_seurat_csv(LIGANDS_INFILE,
+                                                 fc=0.25,
+                                                 pval=0.05)
 
         ligand_genes = mgi_to_hgnc_name(seurat_ligand_genes)
 
