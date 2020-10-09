@@ -12,6 +12,7 @@ import itertools
 import pandas as pd
 import enzyme_client
 from pathlib import Path
+from bioinfokit import visuz
 from indra.sources import tas
 from indra.util import batch_iter
 from collections import defaultdict
@@ -215,6 +216,14 @@ def read_workbook(workbook):
                                for row in wb[receptors_sheet]][1:]))
     return ligands, receptors
 
+def _plot_de_genes(df):
+    os.chdir(output_dir)
+    visuz.gene_exp.volcano(df=df,
+                           lfc='avg_logFC', pv='p_val',
+                           plotlegend=True, legendpos='upper right',
+                           legendanchor=(1.46,1), geneid="Genes", 
+                           genenames="deg", gstyle=2)
+
 
 def process_seurat_csv(infile, fc, pval):
     """ Process Seurat dataframe and only filter in
@@ -223,6 +232,8 @@ def process_seurat_csv(infile, fc, pval):
     df.columns = df.columns.str.replace('Unnamed: 0', 'Genes')
     filtered_markers = df[(df.avg_logFC > fc) &
                           (df.p_val_adj <= pval)]['Genes']
+    # Volcano plot of DE genes
+    _plot_de_genes(df)        
     return set(filtered_markers)
 
 
@@ -528,7 +539,9 @@ if __name__ == '__main__':
         seurat_ligand_genes = process_seurat_csv(LIGANDS_INFILE,
                                                  fc=0.25,
                                                  pval=0.05)
-
+        if len(seurat_ligand_genes) == 0:
+            logger.info('Skipping %s' % cell_type)
+            continue
         ligand_genes = mgi_to_hgnc_name(seurat_ligand_genes)
 
         ligands_in_data = ligand_genes & full_ligand_set
