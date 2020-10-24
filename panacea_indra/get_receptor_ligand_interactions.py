@@ -41,6 +41,7 @@ DATA_SPREADSHEET = os.path.join(INPUT, 'Neuroimmune gene list .xlsx')
 DRUG_BANK_PKL = os.path.join(INPUT, 'drugbank_5.1.pkl')
 ION_CHANNELS = os.path.join(INPUT, 'ion_channels.txt')
 SURFACE_PROTEINS_WB = os.path.join(INPUT, 'Surface Proteins.xlsx')
+HUMAN_PAIN_DB = os.path.join(INPUT, 'Human_Pain_Genes_DB.tsv')
 IMMUNE_CELLTYPE_LIST = ['DCs',
                         'Dermal Macs',
                         'M2a',
@@ -428,6 +429,45 @@ def get_de_product_list(de_enzyme_product_list,
         return de_enzyme_product_list
 
 
+def get_enzyme_product_interactions(df, de_en_df, receptors_in_data):
+    hashes_by_gene_pair = defaultdict(set)
+    products = set(de_en_df['product'])
+    for a, b, hs in zip(df.agA_name, df.agB_name, df.stmt_hash):
+        if a in products and b in receptors_in_data:
+            hashes_by_gene_pair[(a, b)].add(hs)
+    return hashes_by_gene_pair
+
+
+def get_pain_phenotype(lg, pain_db):
+    for r, c in pain_db.iterrows():
+        if isinstance(pain_db.iloc[r]['gene_symbols'], str):
+            l = set(pain_db.iloc[r]['gene_symbols'].split(","))
+            pheno = pain_db.iloc[r]['phenotype_description']
+            for g in l:
+                if g in lg:
+                    l_phenotype[(g)].add(pheno)
+    return l_phenotype
+
+
+def make_rnk(infile):
+    df = pd.read_csv(infile, header=0, sep=",")
+    df.columns = df.columns.str.replace('Unnamed: 0', 'Genes')
+    df = df.loc[0:, ['Genes', 'p_val']]
+    return df
+
+
+def make_pheno_file(l_phenotype):
+    pheno_df = []
+    for keys, values in l_phenotype.items():
+        pheno_df.append(
+            {
+                "Receptor": keys,
+                "Phenotype_description": ", ".join(values)
+            }
+        )
+    return pd.DataFrame(pheno_df)
+
+
 if __name__ == '__main__':
     # Read and extract cell surface proteins from CSPA DB
     wb = openpyxl.load_workbook(SURFACE_PROTEINS_WB)
@@ -520,6 +560,8 @@ if __name__ == '__main__':
     possible_db_drug_targets = set()
     de_enzyme_list = set()
     de_enzyme_product_list = set()
+    l_phenotype = defaultdict(set)
+    ligands_df = pd.DataFrame(columns=['Genes', 'p_val'])
 
     # Looping over each file (cell type) and perform anylysis
     # for each cell type
@@ -539,6 +581,8 @@ if __name__ == '__main__':
         seurat_ligand_genes = process_seurat_csv(LIGANDS_INFILE,
                                                  fc=0.25,
                                                  pval=0.05)
+        ligands_df = pd.concat([ligands_df, make_rnk(LIGANDS_INFILE)],
+                               ignore_index=True)
         if len(seurat_ligand_genes) == 0:
             logger.info('Skipping %s' % cell_type)
             continue
@@ -644,6 +688,11 @@ if __name__ == '__main__':
         possible_drug_targets |= set(ligands_by_receptor.keys())
         possible_db_drug_targets |= set(ligands_by_receptor_db.keys())
 
+
+    # Save all the ligand genes into a ranked files
+    ligands_df.to_csv(os.path.join(OUTPUT, "ligands_pval.rnk"),
+                      index=False, sep="\t")
+
     get_small_mol_report(targets_by_drug, possible_drug_targets,
                          os.path.join(OUTPUT, 'drug_targets.tsv'))
 
@@ -658,7 +707,47 @@ if __name__ == '__main__':
                            'human_de_enzyme_list.txt'), 'w') as fh:
         fh.writelines("%s\n" % enzyme for enzyme in de_enzyme_list)
 
-        
+
     # Save the DE enzyme product list to a csv file
     de_enzyme_product_list.to_csv(os.path.join(OUTPUT, "de_enzyme_products.csv"),
                                   index=False)
+
+    # Get interactions for enzyme products expressed
+    # in neurons
+    de_enzyme_product_hash = get_enzyme_product_interactions(df, de_enzyme_product_list,
+                                                             receptors_in_data)
+
+    all_hashes = set.union(*de_enzyme_product_hash.values())
+    stmts_by_hash = download_statements(all_hashes)
+
+    indra_db_stmts = list(stmts_by_hash.values())
+
+    # Filtering out the indirect INDRA statements
+    indra_db_stmts = ac.filter_direct(indra_db_stmts)
+
+    # Filter incorrect curations
+    db_curations = get_curations()
+    indra_op_filtered = ac.filter_by_curation(indra_db_stmts,
+                                              curations=db_curations)
+    indra_op_filtered = filter_complex_statements(indra_op_filtered,
+                                                  set(de_enzyme_product_list['product']),
+                                                  receptors_in_data)
+
+    # We do this again because when removing complex members, we
+    # end up with more duplicates
+    indra_op_filtered = ac.run_preassembly(indra_op_filtered,
+                                           run_refinement=False)
+    """
+    # Assemble the statements into HTML formatted report and save into a file
+    indra_op_html_report = \
+        html_assembler(
+            indra_op_filtered,
+            fname=os.path.join(OUTPUT,
+                               'indra_enzyme_product_report.html'))
+    """
+    human_pain_df = pd.read_csv(HUMAN_PAIN_DB, sep="\t", header=0)
+    l_phenotype_dict = get_pain_phenotype(l_phenotype, human_pain_df)
+    # Make the phenotype file and save it
+    l_phenotype_csv = make_pheno_file(l_phenotype_dict)
+    pd.DataFrame(l_phenotype_csv).to_csv(os.path.join(OUTPUT, "receptor_phenotypes.csv"),
+                            index=False, header=True, sep=",")
