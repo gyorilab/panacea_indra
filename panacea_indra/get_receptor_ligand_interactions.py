@@ -1,4 +1,5 @@
 import os
+import re
 import sys
 import tqdm
 import pyobo
@@ -28,7 +29,6 @@ from indra.assemblers.cx.assembler import CxAssembler
 from indra.databases import uniprot_client, hgnc_client
 from indra_db.client.principal.curation import get_curations
 from indra.databases.hgnc_client import get_hgnc_from_mouse, get_hgnc_name
-
 
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -95,23 +95,24 @@ goa = _load_goa_gaf()
 
 def get_pain_mol():
     PAIN_SIGNAL_MOL = {
-            "Prostaglandins": "CHEBI:26333",
-            "Brandykinin": "CHEBI:3165"
-        }
+        "Prostaglandins": "CHEBI:26333",
+        "Brandykinin": "CHEBI:3165"
+    }
 
     CHEBI_LIST = {}
     CHEBI_NAMES = {}
     for compounds, chebi_id in PAIN_SIGNAL_MOL.items():
         CHEBI_LIST[compounds] = \
-        [children[1] for children in
-         bio_ontology.get_children('CHEBI',
-                                   chebi_id)]
-        
+            [children[1] for children in
+             bio_ontology.get_children('CHEBI',
+                                       chebi_id)]
+
         CHEBI_NAMES[compounds] = \
-        [bio_ontology.get_name('CHEBI', ids)
-         for ids in CHEBI_LIST[compounds]]
-        
+            [bio_ontology.get_name('CHEBI', ids)
+             for ids in CHEBI_LIST[compounds]]
+
     return CHEBI_NAMES
+
 
 PAIN_MOL_NAMES = get_pain_mol()
 
@@ -129,7 +130,7 @@ def get_hashes_by_gene_pair(df, ligand_genes, receptor_genes):
     hashes_by_gene_pair = defaultdict(set)
     l_genes = list(ligand_genes.values())
     l_logFC = list(ligand_genes.keys())
-    
+
     for a, b, hs in zip(df.agA_name, df.agB_name, df.stmt_hash):
         if a in l_genes and b in receptor_genes:
             logFC = l_logFC[l_genes.index(a)]
@@ -210,12 +211,13 @@ def read_workbook(workbook):
                                for row in wb[receptors_sheet]][1:]))
     return ligands, receptors
 
+
 def _plot_de_genes(df):
     os.chdir(output_dir)
     visuz.gene_exp.volcano(df=df,
                            lfc='avg_logFC', pv='p_val',
                            plotlegend=True, legendpos='upper right',
-                           legendanchor=(1.46,1), geneid="Genes", 
+                           legendanchor=(1.46, 1), geneid="Genes",
                            genenames="deg", gstyle=2)
 
 
@@ -402,17 +404,17 @@ def process_seurat_csv(infile, fc):
     genes with the given Fold change """
     l_df = pd.read_csv(infile, header=0, sep=",")
     l_df.columns = l_df.columns.str.replace('Unnamed: 0', 'Genes')
-    #filtered_markers = df[(df.avg_logFC > fc) &
+    # filtered_markers = df[(df.avg_logFC > fc) &
     #                      (df.p_val_adj <= pval)]['Genes']
-    #filtered_markers = df[(df.avg_logFC > fc)]['Genes']
-    filtered_df = l_df[l_df['avg_logFC'] > 0.25 ][['Genes','avg_logFC']]
-    filtered_df = filtered_df.sort_values(by = 'avg_logFC', ascending=False)
+    # filtered_markers = df[(df.avg_logFC > fc)]['Genes']
+    filtered_df = l_df[l_df['avg_logFC'] > 0.25][['Genes', 'avg_logFC']]
+    filtered_df = filtered_df.sort_values(by='avg_logFC', ascending=False)
     filtered_dict = {}
     for r, c in filtered_df.iterrows():
         filtered_dict[c[1]] = c[0]
     # Volcano plot of DE genes
-    _plot_de_genes(l_df)        
-    #return set(filtered_markers)
+    _plot_de_genes(l_df)
+    # return set(filtered_markers)
     return filtered_dict
 
 
@@ -431,18 +433,19 @@ def get_de_product_list(de_enzyme_product_list,
 
 def get_enzyme_product_interactions(df, de_en_df, receptors_in_data):
     hashes_by_gene_pair = defaultdict(set)
-    #products = set(de_en_df['product'])
     seen_product = set()
-    product_and_fc = {}
+    product_and_fc = defaultdict(set)
     for r, c in de_en_df.iterrows():
         if c[2] not in seen_product:
-            product_and_fc[c[2]] = c[3]
+            product_and_fc[c[2]].add((c[0], c[3]))
         seen_product.add(c[2])
-    
+
     for a, b, hs in zip(df.agA_name, df.agB_name, df.stmt_hash):
         if a in product_and_fc and b in receptors_in_data:
-            logFC = product_and_fc[a]
-            hashes_by_gene_pair[(a, b, logFC)].add(hs)
+            enzyme_logFC = [e for v in product_and_fc[a]
+                            for e in v]
+            enzyme, logFC = enzyme_logFC[0], enzyme_logFC[1]
+            hashes_by_gene_pair[(a, b, enzyme, logFC)].add(hs)
     return hashes_by_gene_pair
 
 
@@ -508,7 +511,6 @@ def mgi_to_hgnc_name(gene_list):
 
 
 if __name__ == '__main__':
-
     # Read and extract cell surface proteins from CSPA DB
     wb = openpyxl.load_workbook(SURFACE_PROTEINS_WB)
     surface_protein_set = set(row[4].value for row in wb['Sheet 1']
@@ -602,10 +604,10 @@ if __name__ == '__main__':
     de_enzyme_product_list = set()
     r_phenotype = defaultdict(set)
     ligands_df = pd.DataFrame(columns=['Genes', 'p_val'])
-    seurat_ligand_genes = {}
-    
+
     # Looping over each file (cell type) and perform anylysis
     # for each cell type
+    seurat_ligand_genes = {}
     for cell_type in IMMUNE_CELLTYPE_LIST:
         output_dir = os.path.join(OUTPUT, cell_type)
         if not os.path.exists(output_dir):
@@ -614,7 +616,6 @@ if __name__ == '__main__':
         # read the input (immune cell type) ligand file
         cell_type_full = 'TwoGroups_DEG1_%s_AJ' % cell_type
         LIGANDS_INFILE = os.path.join(INPUT, '%s.csv' % cell_type_full)
-
 
         # Extract markers from seurat dataframe with logFC >= 0.25 and
         # pval <= 0.05
@@ -626,21 +627,20 @@ if __name__ == '__main__':
         ligands_df = pd.concat([ligands_df, make_rnk(LIGANDS_INFILE)],
                                ignore_index=True)
 
-
         if len(seurat_ligand_genes) == 0:
             logger.info('Skipping %s' % cell_type)
             continue
 
-        # Get logFC as key and ligands as values 
+        # Get logFC as key and ligands as values
         ligand_genes = ligand_mgi_to_hgnc_name(seurat_ligand_genes)
 
         # Retain only ligands
-        ligands_in_data = {k:next(iter(v)) for k, v in ligand_genes.items()
-                          if next(iter(v)) in full_ligand_set}
+        ligands_in_data = {k: next(iter(v)) for k, v in ligand_genes.items()
+                           if next(iter(v)) in full_ligand_set}
 
         # Retain only enzymes
-        enzymes_in_data = {k:next(iter(v)) for k, v in ligand_genes.items()
-                          if next(iter(v)) in all_enzymes}
+        enzymes_in_data = {k: next(iter(v)) for k, v in ligand_genes.items()
+                           if next(iter(v)) in all_enzymes}
 
         # Get enzyme products by taking pathway commons DB as reference
         de_enzyme_stmts = enzyme_client.get_enzyme_products(enzymes_in_data)
@@ -654,12 +654,12 @@ if __name__ == '__main__':
                                                                 PAIN_MOL_NAMES)
 
         # write de enzyme products to a file
-        de_enzyme_stmts.to_csv(os.path.join(output_dir, cell_type+"_de_enzymes_stmts.tsv"),
+        de_enzyme_stmts.to_csv(os.path.join(output_dir, cell_type + "_de_enzymes_stmts.tsv"),
                                sep="\t", header=True, index=False)
 
         # write de enzyme pain interactions to a file
-        pain_interactions.to_csv(os.path.join(output_dir, cell_type+"_enzyme_pain_interactions.tsv"),
-                               sep="\t", header=True, index=False)
+        pain_interactions.to_csv(os.path.join(output_dir, cell_type + "_enzyme_pain_interactions.tsv"),
+                                 sep="\t", header=True, index=False)
 
         # Get the union of all the enzymes in the data
         possible_drug_targets |= set(enzymes_in_data.values())
@@ -667,31 +667,25 @@ if __name__ == '__main__':
         # Get the union of all the enzymes in the data
         de_enzyme_list |= set(enzymes_in_data.values())
 
-
-        ligands_fc_df = {'Ligands': [*ligands_in_data.values()], 
-                      'logFC': [*ligands_in_data.keys()]}
+        ligands_fc_df = {'Ligands': [*ligands_in_data.values()],
+                         'logFC': [*ligands_in_data.keys()]}
         ligands_fc_df = pd.DataFrame(ligands_fc_df)
 
-        ligands_fc_df.to_csv(os.path.join(output_dir, cell_type+"_ligands_fc.csv"), 
+        ligands_fc_df.to_csv(os.path.join(output_dir, cell_type + "_ligands_fc.csv"),
                              header=True, index=False)
 
         logger.info(f'Loaded {len(ligands_in_data)} ligand genes from data')
         logger.info(f'Loaded {len(receptors_in_data)} receptor genes from data')
 
-
         # Now get INDRA DB Statements for the receptor-ligand pairs
         hashes_by_gene_pair = get_hashes_by_gene_pair(df, ligands_in_data,
                                                       receptors_in_data)
 
-
         all_hashes = set.union(*hashes_by_gene_pair.values())
-
 
         stmts_by_hash = download_statements(all_hashes)
 
-
         indra_db_stmts = list(stmts_by_hash.values())
-
 
         # Filtering out the indirect INDRA statements
         indra_db_stmts = ac.filter_direct(indra_db_stmts)
@@ -734,8 +728,8 @@ if __name__ == '__main__':
 
         # Creating a dict of logFC as key and
         # ligand as its value
-        lg_logFC = {lg_fc[2]:lg_fc[0] 
-                   for lg_fc in hashes_by_gene_pair.keys()}
+        lg_logFC = {lg_fc[2]: lg_fc[0]
+                    for lg_fc in hashes_by_gene_pair.keys()}
 
         logFC_stmts = defaultdict(set)
         lg_list = list(lg_logFC.values())
@@ -749,29 +743,29 @@ if __name__ == '__main__':
                     logFC_stmts[(fc)].add(stmt)
 
         # Sorting the values in descending order
-        sorted_lg_stmts = dict(sorted(logFC_stmts.items(), 
+        sorted_lg_stmts = dict(sorted(logFC_stmts.items(),
                                       reverse=True))
 
         # create a dataframe of ranked statements
         sorted_stmts_df = [
-                {
-                    'Interaction statement': stmt,
-                    'logFC' : fc
-                }
-                for fc, stmts in sorted_lg_stmts.items()
-                    for stmt in stmts
+            {
+                'Interaction statement': stmt,
+                'logFC': fc
+            }
+            for fc, stmts in sorted_lg_stmts.items()
+            for stmt in stmts
 
-            ]
+        ]
         ranked_df = pd.DataFrame(sorted_stmts_df)
 
         # write the dataframe to a TSV file
-        ranked_df.to_csv(os.path.join(output_dir, cell_type+"_ligand_receptor_ranked_stmts.tsv"),
-                               sep="\t", header=True, index=False)
+        ranked_df.to_csv(os.path.join(output_dir, cell_type + "_ligand_receptor_ranked_stmts.tsv"),
+                         sep="\t", header=True, index=False)
 
         # unpack the set of ranked statemetns into a list
         # for assembling into a html file
         sorted_lg_stmts_list = [stmt for stmts in sorted_lg_stmts.values()
-                             for stmt in stmts]
+                                for stmt in stmts]
 
         # Assemble the statements into HTML formatted report and save into a file
         indra_op_html_report = \
@@ -793,7 +787,6 @@ if __name__ == '__main__':
         #                           'indra_ligand_receptor_report.cx'))
         """
 
-
         ligands_by_receptor = get_ligands_by_receptor(receptors_in_data,
                                                       set(ligands_in_data.values()),
                                                       indra_op_filtered)
@@ -802,16 +795,12 @@ if __name__ == '__main__':
                                                          set(ligands_in_data.values()),
                                                          stmts_db_by_cell_type[cell_type])
 
-
         possible_drug_targets |= set(ligands_by_receptor.keys())
         possible_db_drug_targets |= set(ligands_by_receptor_db.keys())
-
-
 
     # Save all the ligand genes into a ranked files
     ligands_df.to_csv(os.path.join(OUTPUT, "ligands_pval.rnk"),
                       index=False, sep="\t")
-
 
     get_small_mol_report(targets_by_drug, possible_drug_targets,
                          os.path.join(OUTPUT, 'drug_targets.tsv'))
@@ -823,13 +812,10 @@ if __name__ == '__main__':
                                os.path.join(OUTPUT,
                                             'interaction_potential.pdf'))
 
-
     # Save the DE enzyme list to a file
     with open(os.path.join(OUTPUT,
                            'human_de_enzyme_list.txt'), 'w') as fh:
         fh.writelines("%s\n" % enzyme for enzyme in de_enzyme_list)
-
-
 
     # Save the DE enzyme product list to a csv file
     de_enzyme_product_list.to_csv(os.path.join(OUTPUT, "de_enzyme_products.csv"),
@@ -839,25 +825,19 @@ if __name__ == '__main__':
     # in neurons
     de_enzyme_product_hash = get_enzyme_product_interactions(df, de_enzyme_product_list,
                                                              receptors_in_data)
-
-
-
     all_hashes = set.union(*de_enzyme_product_hash.values())
 
     # prdct_logFC stores enzyme product as a key and
-    # its respective logFC as value
-    prdct_logFC = {prdct[0]:prdct[2] 
-                   for prdct in de_enzyme_product_hash.keys()}
+    # its respective enzyme and logFC as value
+    prdct_logFC = defaultdict(set)
+    for prdct in de_enzyme_product_hash.keys():
+        prdct_logFC[(prdct[0])].add((prdct[2], prdct[3]))
 
     stmts_by_hash = download_statements(all_hashes)
-
-
-
     indra_db_stmts = list(stmts_by_hash.values())
 
     # Filtering out the indirect INDRA statements
     indra_db_stmts = ac.filter_direct(indra_db_stmts)
-
 
     # Filter incorrect curations
     db_curations = get_curations()
@@ -872,18 +852,18 @@ if __name__ == '__main__':
     indra_op_filtered = ac.run_preassembly(indra_op_filtered,
                                            run_refinement=False)
 
-
     # Creating a dictionary of logFC and
-    # its respective statement
+    # its respective statement and enzyme
     logFC_stmts = defaultdict(set)
     for stmt in indra_op_filtered:
         for ag in stmt.agent_list():
             if ag.name in prdct_logFC:
-                fc = prdct_logFC[ag.name]
-                logFC_stmts[(fc)].add(stmt)
+                for k in prdct_logFC[ag.name]:
+                    en, fc = k[0], k[1]
+                logFC_stmts[(fc)].add((stmt, en))
 
     sorted_stmts = dict(sorted(logFC_stmts.items(), reverse=True))
-    sorted_stmts_list = [stmt for stmts in sorted_stmts.values()
+    sorted_stmts_list = [stmt[0] for stmts in sorted_stmts.values()
                          for stmt in stmts]
 
     # Assemble the statements into HTML formatted report and save into a file
@@ -893,25 +873,25 @@ if __name__ == '__main__':
             fname=os.path.join(OUTPUT,
                                'logfc_indra_enzyme_product_neuron_report.html'))
 
-
     # Creating a dataframe of ranked enzyme products
     # and its interactions on the neuron side
     sorted_stmts_df = [
-            {
-                'Interaction statement': stmt,
-                'logFC' : fc
-            }
-            for fc, stmts in sorted_stmts.items()
-                for stmt in stmts
+        {
+            'Agent_A': [stmt[0].agent_list()][0][0].name,
+            'Agent_B': [stmt[0].agent_list()][0][1].name,
+            'Interaction type': re.match("\w+", str(stmt[0])).group(),
+            'Enzyme': stmt[1],
+            'logFC': fc
+        }
+        for fc, stmts in sorted_stmts.items()
+        for stmt in stmts
 
-        ]
+    ]
 
     # Write out the dataframe to a csv
     pd.DataFrame(sorted_stmts_df).to_csv(os.path.join(OUTPUT,
                                                       "ranked_de_enzyme_products_ineractions.csv"),
                                          index=False)
-
-
 
     human_pain_df = pd.read_csv(HUMAN_PAIN_DB, sep="\t", header=0)
     r_phenotype_dict = get_pain_phenotype(receptors_in_data,
@@ -920,4 +900,4 @@ if __name__ == '__main__':
     # Make the phenotype file and save it
     r_phenotype_csv = make_pheno_file(r_phenotype_dict)
     pd.DataFrame(r_phenotype_csv).to_csv(os.path.join(OUTPUT, "receptor_phenotypes.csv"),
-                            index=False, header=True, sep=",")
+                                         index=False, header=True, sep=",")
