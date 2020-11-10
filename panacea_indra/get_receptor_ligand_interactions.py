@@ -47,7 +47,8 @@ IMMUNE_CELLTYPE_LIST = ['DCs',
                         'M2a',
                         'M2b',
                         'Monocytes',
-                        'Resident Mac']
+                        'Resident Mac',
+                        'Mast cells']
 
 logger = logging.getLogger('receptor_ligand_interactions')
 
@@ -370,6 +371,7 @@ def plot_interaction_potential(num_interactions_by_cell_type, fname):
         'M2b': 'Reparative macrophages (2b)',
         'Monocytes': 'Monocytes',
         'Resident Mac': 'Resident macrophages',
+        'Mast cells': 'Mast cells'
     }
     G = networkx.DiGraph()
     for cell_type, num_int in num_interactions_by_cell_type.items():
@@ -510,6 +512,26 @@ def mgi_to_hgnc_name(gene_list):
     return hgnc_gene_set
 
 
+def make_interaction_df(interaction_dict):
+    interaction_list = [
+        {
+            'Agent_A': [stmt[0].agent_list()][0][0].name,
+            'Agent_B': [stmt[0].agent_list()][0][1].name,
+            'Interaction type': re.match("\w+", str(stmt[0])).group(),
+            'Enzyme': stmt[1],
+            'logFC': fc
+        }
+        for fc, stmts in interaction_dict.items()
+        for stmt in stmts
+        if len(stmt[0].agent_list()) > 1
+
+    ]
+    df = pd.DataFrame(interaction_list)
+    df = df.sort_values(by=['logFC'],
+                        ascending=False)
+    return df
+
+
 if __name__ == '__main__':
     # Read and extract cell surface proteins from CSPA DB
     wb = openpyxl.load_workbook(SURFACE_PROTEINS_WB)
@@ -604,6 +626,8 @@ if __name__ == '__main__':
     de_enzyme_product_list = set()
     r_phenotype = defaultdict(set)
     ligands_df = pd.DataFrame(columns=['Genes', 'p_val'])
+    all_ranked_lg_df = pd.DataFrame(columns=['Interaction statement',
+                                          'logFC'])
 
     # Looping over each file (cell type) and perform anylysis
     # for each cell type
@@ -757,6 +781,8 @@ if __name__ == '__main__':
 
         ]
         ranked_df = pd.DataFrame(sorted_stmts_df)
+        all_ranked_lg_df = pd.concat([all_ranked_lg_df, ranked_df],
+                                     ignore_index=False)
 
         # write the dataframe to a TSV file
         ranked_df.to_csv(os.path.join(output_dir, cell_type + "_ligand_receptor_ranked_stmts.tsv"),
@@ -875,23 +901,30 @@ if __name__ == '__main__':
 
     # Creating a dataframe of ranked enzyme products
     # and its interactions on the neuron side
-    sorted_stmts_df = [
-        {
-            'Agent_A': [stmt[0].agent_list()][0][0].name,
-            'Agent_B': [stmt[0].agent_list()][0][1].name,
-            'Interaction type': re.match("\w+", str(stmt[0])).group(),
-            'Enzyme': stmt[1],
-            'logFC': fc
-        }
-        for fc, stmts in sorted_stmts.items()
-        for stmt in stmts
-
-    ]
+    en_prdct_interaction_df = \
+        make_interaction_df(sorted_stmts)
 
     # Write out the dataframe to a csv
     pd.DataFrame(sorted_stmts_df).to_csv(os.path.join(OUTPUT,
                                                       "ranked_de_enzyme_products_ineractions.csv"),
-                                         index=False)
+                                         index=True)
+
+    # Make a dataframe of ligand
+    # receptor interactions
+    ranked_lg_dict = defaultdict(set)
+    for r, c in all_ranked_lg_df.iterrows():
+        ranked_lg_dict[(c[1])].add((c[0], 'NA'))
+
+    lg_interaction_df = \
+        make_interaction_df(ranked_lg_dict)
+
+    # Concat enzyme product dataframe and
+    # ligand receptor interaction dataframe
+    full_interaction_df = pd.concat([en_prdct_interaction_df,
+                                     lg_interaction_df]).sort_values(by=['logFC'],
+                                                                     ascending=False)
+    full_interaction_df.to_csv(os.path.join(OUTPUT, 'full_ranked_interaction.csv'),
+                               index=True, sep=",", header=True)
 
     human_pain_df = pd.read_csv(HUMAN_PAIN_DB, sep="\t", header=0)
     r_phenotype_dict = get_pain_phenotype(receptors_in_data,
