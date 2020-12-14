@@ -6,6 +6,7 @@ import pyobo
 import obonet
 import pickle
 import logging
+import graphviz
 import datetime
 import openpyxl
 import networkx
@@ -14,8 +15,11 @@ import pandas as pd
 import enzyme_client
 from pathlib import Path
 from bioinfokit import visuz
+from graphviz import Digraph
 from indra.sources import tas
+import matplotlib.pyplot as plt
 from indra.util import batch_iter
+from collections import OrderedDict
 from collections import defaultdict
 from indra.statements import Complex
 from indra.sources import indra_db_rest
@@ -312,6 +316,22 @@ def get_small_mol_report(targets_by_drug, potential_targets, fname):
     return df
 
 
+"""
+def get_ligands_by_receptor(receptors_in_data, ligands_in_data, stmts):
+    ligands_by_receptor = defaultdict(set)
+    logFC = list(ligands_in_data.keys())
+    lg = list(ligands_in_data.values())
+
+    for stmt in stmts:
+        agent_names = {agent.name for agent in stmt.agent_list()}
+        receptors = agent_names & receptors_in_data
+        ligands = agent_names & ligands_in_data
+        for receptor in receptors:
+            ligands_by_receptor[receptor] |= ligands
+    return dict(ligands_by_receptor)
+"""
+
+
 def get_ligands_by_receptor(receptors_in_data, ligands_in_data, stmts):
     ligands_by_receptor = defaultdict(set)
     for stmt in stmts:
@@ -531,7 +551,6 @@ def make_interaction_df(interaction_dict):
                         ascending=False)
     return df
 
-
 if __name__ == '__main__':
     # Read and extract cell surface proteins from CSPA DB
     wb = openpyxl.load_workbook(SURFACE_PROTEINS_WB)
@@ -627,7 +646,12 @@ if __name__ == '__main__':
     r_phenotype = defaultdict(set)
     ligands_df = pd.DataFrame(columns=['Genes', 'p_val'])
     all_ranked_lg_df = pd.DataFrame(columns=['Interaction statement',
-                                          'logFC'])
+                                             'logFC'])
+    enzyme_product_dict = defaultdict(set)
+    possible_rc_drug_targets = set()
+    possible_en_drug_targets = defaultdict(set)
+    ligands_FC = {}
+    enzymes_FC = {}
 
     # Looping over each file (cell type) and perform anylysis
     # for each cell type
@@ -662,12 +686,23 @@ if __name__ == '__main__':
         ligands_in_data = {k: next(iter(v)) for k, v in ligand_genes.items()
                            if next(iter(v)) in full_ligand_set}
 
+        # Keep all ligands with FC from all cell types
+        ligands_FC.update(ligands_in_data)
+
         # Retain only enzymes
         enzymes_in_data = {k: next(iter(v)) for k, v in ligand_genes.items()
                            if next(iter(v)) in all_enzymes}
 
+        # Keep all enzymes with FC from all cell typesa
+        enzymes_FC.update(enzymes_in_data)
+
         # Get enzyme products by taking pathway commons DB as reference
         de_enzyme_stmts = enzyme_client.get_enzyme_products(enzymes_in_data)
+
+        # Store enzymes as keys and its respective product
+        # as values
+        for r, c in de_enzyme_stmts.iterrows():
+            enzyme_product_dict[(c[0])].add(c[2])
 
         # Keep merging enzyme products from all the celltypes
         de_enzyme_product_list = get_de_product_list(de_enzyme_product_list,
@@ -805,13 +840,12 @@ if __name__ == '__main__':
         # Optional: Please configure the indra config file in
         # ~/.config/indra/config.ini with NDEx credentials to upload the
         # networks into the server
-        """
-        #indra_op_cx_report, ndex_network_id = \
-        #    cx_assembler(
-        #        stmts_public,
-        #        fname=os.path.join(output_dir,
-        #                           'indra_ligand_receptor_report.cx'))
-        """
+
+        indra_op_cx_report, ndex_network_id = \
+            cx_assembler(
+                stmts_public,
+                fname=os.path.join(output_dir,
+                                   'indra_ligand_receptor_report.cx'))
 
         ligands_by_receptor = get_ligands_by_receptor(receptors_in_data,
                                                       set(ligands_in_data.values()),
@@ -821,6 +855,10 @@ if __name__ == '__main__':
                                                          set(ligands_in_data.values()),
                                                          stmts_db_by_cell_type[cell_type])
 
+        for fc, en in enzymes_in_data.items():
+            possible_en_drug_targets[(fc)].add(en)
+
+        possible_rc_drug_targets |= set(ligands_by_receptor.keys())
         possible_drug_targets |= set(ligands_by_receptor.keys())
         possible_db_drug_targets |= set(ligands_by_receptor_db.keys())
 
@@ -881,12 +919,15 @@ if __name__ == '__main__':
     # Creating a dictionary of logFC and
     # its respective statement and enzyme
     logFC_stmts = defaultdict(set)
+    products_receptors = defaultdict(set)
     for stmt in indra_op_filtered:
         for ag in stmt.agent_list():
             if ag.name in prdct_logFC:
                 for k in prdct_logFC[ag.name]:
                     en, fc = k[0], k[1]
                 logFC_stmts[(fc)].add((stmt, en))
+                chem, rc = stmt.agent_list()[0].name, stmt.agent_list()[1].name
+                products_receptors[(chem)].add(rc)
 
     sorted_stmts = dict(sorted(logFC_stmts.items(), reverse=True))
     sorted_stmts_list = [stmt[0] for stmts in sorted_stmts.values()
@@ -934,3 +975,65 @@ if __name__ == '__main__':
     r_phenotype_csv = make_pheno_file(r_phenotype_dict)
     pd.DataFrame(r_phenotype_csv).to_csv(os.path.join(OUTPUT, "receptor_phenotypes.csv"),
                                          index=False, header=True, sep=",")
+
+    # full drug interactions
+    possible_en_drug_targets = OrderedDict(sorted(possible_en_drug_targets.items(),
+                                                  reverse=True))
+    fc_en_drug_targets = list(possible_en_drug_targets.keys())
+    en_drug_targets = list(possible_en_drug_targets.values())
+
+    en_targets_in_data = defaultdict(set)
+    rc_targets_in_data = defaultdict(set)
+    fc_in_data = defaultdict(set)
+
+    for drug, targets in targets_by_drug.items():
+        for t in targets:
+            for e in en_drug_targets:
+                if t in e:
+                    fc = fc_en_drug_targets[en_drug_targets.index(e)]
+                    fc_in_data[(drug[0])].add(fc)
+                    en_targets_in_data[(drug[0])].add(t)
+                if t in ligands_by_receptor.keys():
+                    rc_targets_in_data[(drug[0])].add(t)
+
+    drug_interaction_list = []
+    for drug, targets in targets_by_drug.items():
+        intermediates = set()
+        l = []
+        if drug[0] in en_targets_in_data.keys():
+            en_target = list(en_targets_in_data[drug[0]])
+            for enzymes in en_target:
+                intermediates.update(enzyme_product_dict[enzymes])
+            intermediates = list(intermediates)
+
+            for val in intermediates:
+                if val != None:
+                    l.append(val)
+            avgFC = sum(fc_in_data[drug[0]]) / len(fc_in_data[drug[0]])
+        else:
+            en_target = ''
+            avgFC = 0
+
+        if drug[0] in rc_targets_in_data.keys():
+            rc_target = rc_targets_in_data[drug[0]]
+        else:
+            rc_target = ""
+
+        other_targets = targets - set(en_target) - set(rc_target)
+
+        drug_interaction_list.append(
+            {
+                "Drug": drug[0],
+                "Named": 0 if drug[0].startswith('CHEMBL') else 1,
+                "Enzyme targets": ", ".join(en_target),
+                "Enzyme products": ", ".join(l),
+                "Receptor targets": ", ".join(rc_target),
+                "Score": "{:.3f}".format((len(en_target) + len(rc_target)) / len(targets)),
+                "Other targets": ", ".join(sorted(other_targets)),
+                "Other target hits": "{:.3f}".format(len(other_targets)),
+                "Total hits": "{:.3f}".format((len(en_target) + len(rc_target) + len(other_targets))),
+                "avgFC": float(avgFC)
+            }
+        )
+    pd.DataFrame(drug_interaction_list).sort_values(by=['avgFC'], ascending=False).to_csv(os.path.join(
+        OUTPUT, "ranked_enzyme_drug_target5.csv"))
