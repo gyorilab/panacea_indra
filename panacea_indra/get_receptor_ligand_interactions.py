@@ -1037,3 +1037,45 @@ if __name__ == '__main__':
         )
     pd.DataFrame(drug_interaction_list).sort_values(by=['avgFC'], ascending=False).to_csv(os.path.join(
         OUTPUT, "ranked_enzyme_drug_target5.csv"))
+
+    # Di-graph of interactions between top 10 DE ligands, enzyme products and receptors
+    ligands_logFC = defaultdict(set)
+    ligandsFC_by_receptor = defaultdict(set)
+    sorted_ligands_FC = dict(sorted(ligands_FC.items(), reverse=True))
+    sorted_enzyme_FC = dict(sorted(enzymes_FC.items(), reverse=True))
+    lg_fc = list(sorted_ligands_FC.keys())
+    lg = list(sorted_ligands_FC.values())
+
+    for cell_type in stmts_db_by_cell_type.keys():
+        stmts = stmts_db_by_cell_type[cell_type]
+        for stmt in stmts:
+            agent_names = {agent.name for agent in stmt.agent_list()}
+            receptors = agent_names & receptors_in_data
+            ligands = "".join(agent_names & set(lg))
+            if len(ligands) > 0 and ligands not in receptors:
+                en_logFC = lg_fc[lg.index(ligands)]
+                for receptor in receptors:
+                    ligandsFC_by_receptor[(en_logFC, ligands)].add(receptor)
+
+    ligandsFC_by_receptor = dict(sorted(ligandsFC_by_receptor.items(), reverse=True))
+
+    G = networkx.DiGraph()
+
+    top10_lg_rc = dict(sorted(itertools.islice(ligandsFC_by_receptor.items(), 10)))
+    top10_en = dict(itertools.islice(sorted_enzyme_FC.items(), 10))
+
+    for FC_lg, rcs in top10_lg_rc.items():
+        for rc in rcs:
+            G.add_node(FC_lg[1], color='green')
+            G.add_edge(FC_lg[1], rc, label="{:.2f}".format(FC_lg[0]))
+    for en_FC, en in top10_en.items():
+        for chem in enzyme_product_dict[en]:
+            for rcs in products_receptors[chem]:
+                G.add_node(en, color='red')
+                G.add_edge(en, chem, label="{:.2f}".format(en_FC))
+                G.add_edge(chem, rcs)
+
+    G.graph.setdefault('graph', {})['rankdir'] = 'LR'
+    ag = networkx.nx_agraph.to_agraph(G)
+    fname = os.path.join(OUTPUT, "interactions_digraph.pdf")
+    ag.draw(fname, prog='dot')
