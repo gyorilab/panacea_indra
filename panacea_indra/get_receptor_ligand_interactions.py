@@ -551,6 +551,7 @@ def make_interaction_df(interaction_dict):
                         ascending=False)
     return df
 
+
 if __name__ == '__main__':
     # Read and extract cell surface proteins from CSPA DB
     wb = openpyxl.load_workbook(SURFACE_PROTEINS_WB)
@@ -652,6 +653,7 @@ if __name__ == '__main__':
     possible_en_drug_targets = defaultdict(set)
     ligands_FC = {}
     enzymes_FC = {}
+    cell_type_markers = {}
 
     # Looping over each file (cell type) and perform anylysis
     # for each cell type
@@ -692,6 +694,9 @@ if __name__ == '__main__':
         # Retain only enzymes
         enzymes_in_data = {k: next(iter(v)) for k, v in ligand_genes.items()
                            if next(iter(v)) in all_enzymes}
+
+        cell_type_markers[cell_type] = ligands_in_data
+        cell_type_markers[cell_type].update(enzymes_in_data)
 
         # Keep all enzymes with FC from all cell typesa
         enzymes_FC.update(enzymes_in_data)
@@ -1079,3 +1084,45 @@ if __name__ == '__main__':
     ag = networkx.nx_agraph.to_agraph(G)
     fname = os.path.join(OUTPUT, "interactions_digraph.pdf")
     ag.draw(fname, prog='dot')
+
+
+    ## Downstream analysis
+    INDRA_SIF = os.path.join(INPUT, 'sif.pkl')
+
+    with open(INDRA_SIF, 'rb') as indra_sif:
+        indra_sif = pickle.load(indra_sif)
+
+    downstream_hits = defaultdict(set)
+    downstream_evidence = dict()
+    downstream_stmts = defaultdict(set)
+    rc_in_data_dwnstrm = set()
+    for a, b, ev, hs in zip(indra_sif.agA_name,
+                            indra_sif.agB_name,
+                            indra_sif.evidence_count,
+                            indra_sif.stmt_hash):
+        if a in receptor_genes_go:
+            downstream_hits[(b)].add(a)
+            if b not in downstream_evidence:
+                downstream_evidence[b] = ev
+            else:
+                downstream_evidence[b] = downstream_evidence[b] + ev
+
+            downstream_stmts[(b)].add(hs)
+        if a in receptors_in_data:
+            rc_in_data_dwnstrm.add(b)
+
+    downstream_df = []
+    for ds, us in downstream_hits.items():
+        if ds in rc_in_data_dwnstrm:
+            downstream_df.append(
+                {
+                    "Upstream mol": ", ".join(us),
+                    "Downstream target": ds,
+                    "evidence count": downstream_evidence[ds],
+                    "Statement hash": ', '.join(str(x) for x in downstream_stmts[ds])
+                }
+            )
+    downstream_df = pd.DataFrame(downstream_df).sort_values(by=['evidence count'],
+                                                            ascending=False)
+
+    downstream_df.to_csv(os.path.join(OUTPUT, "downstream_hits.csv"), sep=",", header=True, index=False)
