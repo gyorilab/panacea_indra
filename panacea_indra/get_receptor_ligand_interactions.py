@@ -1,9 +1,12 @@
 import os
 import re
 import sys
+import csv
+import json
 import tqdm
 import pyobo
 import obonet
+import random
 import pickle
 import logging
 import graphviz
@@ -11,9 +14,11 @@ import datetime
 import openpyxl
 import networkx
 import itertools
+import numpy as np
 import pandas as pd
 import enzyme_client
 from pathlib import Path
+from matplotlib import rc
 from bioinfokit import visuz
 from graphviz import Digraph
 from indra.sources import tas
@@ -21,9 +26,13 @@ import matplotlib.pyplot as plt
 from indra.util import batch_iter
 from collections import OrderedDict
 from collections import defaultdict
+import matplotlib.colors as mcolors
 from indra.statements import Complex
+from scipy.stats import fisher_exact
 from indra.sources import indra_db_rest
 import indra.tools.assemble_corpus as ac
+from indra.literature import pubmed_client
+from indra.assemblers.cx import hub_layout
 from indra.ontology.bio import bio_ontology
 from indra.databases.uniprot_client import um
 from indra.assemblers.html import HtmlAssembler
@@ -33,7 +42,6 @@ from indra.assemblers.cx.assembler import CxAssembler
 from indra.databases import uniprot_client, hgnc_client
 from indra_db.client.principal.curation import get_curations
 from indra.databases.hgnc_client import get_hgnc_from_mouse, get_hgnc_name
-
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 INPUT = os.path.join(HERE, os.pardir, 'input')
@@ -552,6 +560,55 @@ def make_interaction_df(interaction_dict):
     return df
 
 
+def create_interaction_digraph(ligand_receptors,
+                               sorted_enzyme_FC,
+                               fname):
+    '''
+    This function takes two dictionaries as input,
+    ligand receptors and enzyme fold change and creates
+    a interaction Digraph of ligands, enzymes and receptors.
+
+    Parameters
+    ----------
+    celtype_stmts : Optional[list[indra.statements.Statement]]
+        A list of INDRA Statements to be assembled.
+    network_name : Optional[str]
+        The name of the network to be assembled. Default: indra_assembled
+
+    Attributes
+    ----------
+    ligands_dict : dict
+        Dict of foldchange and ligands as keys and receptors as values
+    enzyme dict : dict
+        Dict of foldchange as keys and enzymes as values
+    fname : str
+        output file name
+    '''
+
+    ligand_receptors = dict(sorted(ligand_receptors.items(),
+                                   reverse=True))
+    G = networkx.DiGraph()
+
+    top_lg_rc = dict(sorted(itertools.islice(ligand_receptors.items(), 10)))
+    top_en = dict(itertools.islice(sorted_enzyme_FC.items(), 10))
+
+    for FC_lg, rcs in top_lg_rc.items():
+        for rc in rcs:
+            G.add_node(FC_lg[1], color='green')
+            G.add_edge(FC_lg[1], rc, label="{:.2f}".format(FC_lg[0]))
+    for en_FC, en in top_en.items():
+        for chem in enzyme_product_dict[en]:
+            for rcs in products_receptors[chem]:
+                G.add_node(en, color='red')
+                G.add_edge(en, chem, label="{:.2f}".format(en_FC))
+                G.add_edge(chem, rcs)
+
+    G.graph.setdefault('graph', {})['rankdir'] = 'LR'
+    ag = networkx.nx_agraph.to_agraph(G)
+    fname = os.path.join(OUTPUT, fname + "interactions_digraph.pdf")
+    ag.draw(fname, prog='dot')
+
+
 if __name__ == '__main__':
     # Read and extract cell surface proteins from CSPA DB
     wb = openpyxl.load_workbook(SURFACE_PROTEINS_WB)
@@ -655,6 +712,7 @@ if __name__ == '__main__':
     enzymes_FC = {}
     cell_type_markers = {}
 
+
     # Looping over each file (cell type) and perform anylysis
     # for each cell type
     seurat_ligand_genes = {}
@@ -755,7 +813,7 @@ if __name__ == '__main__':
         indra_db_stmts = ac.filter_direct(indra_db_stmts)
 
         # Filter statements which are not ligands/receptors
-        op_filtered = filter_op_stmts(op.statements, ligands_in_data,
+        op_filtered = filter_op_stmts(op.statements, ligands_in_data.values(),
                                       receptors_in_data)
 
         # Merge omnipath/INDRA statements and run assembly
@@ -1041,15 +1099,18 @@ if __name__ == '__main__':
             }
         )
     pd.DataFrame(drug_interaction_list).sort_values(by=['avgFC'], ascending=False).to_csv(os.path.join(
-        OUTPUT, "ranked_enzyme_drug_target5.csv"))
+        OUTPUT, "ranked_enzyme_drug_target.csv"))
 
-    # Di-graph of interactions between top 10 DE ligands, enzyme products and receptors
+    # Di-graph of interactions between top 10 DE ligands, enzyme products
+    # and receptors
     ligands_logFC = defaultdict(set)
     ligandsFC_by_receptor = defaultdict(set)
     sorted_ligands_FC = dict(sorted(ligands_FC.items(), reverse=True))
     sorted_enzyme_FC = dict(sorted(enzymes_FC.items(), reverse=True))
     lg_fc = list(sorted_ligands_FC.keys())
     lg = list(sorted_ligands_FC.values())
+    filtered_stmts_by_cell_type = []
+    cell_type_stmts = defaultdict(set)
 
     for cell_type in stmts_db_by_cell_type.keys():
         stmts = stmts_db_by_cell_type[cell_type]
@@ -1058,35 +1119,87 @@ if __name__ == '__main__':
             receptors = agent_names & receptors_in_data
             ligands = "".join(agent_names & set(lg))
             if len(ligands) > 0 and ligands not in receptors:
+                filtered_stmts_by_cell_type.append(stmt)
                 en_logFC = lg_fc[lg.index(ligands)]
                 for receptor in receptors:
+                    # Storing the interactions in a dictionary
+                    # for each cell type and plot di-graphs
+                    cell_type_stmts[(en_logFC, ligands)].add(receptor)
+
+                    # Storing interactions for all the cell-types
                     ligandsFC_by_receptor[(en_logFC, ligands)].add(receptor)
 
-    ligandsFC_by_receptor = dict(sorted(ligandsFC_by_receptor.items(), reverse=True))
+        # Plot interactions for each cell type
+        create_interaction_digraph(cell_type_stmts, sorted_enzyme_FC,
+                                   fname=os.path.join(cell_type, cell_type + "_"))
+        # Reset the cell type statements dict
+        cell_type_stmts = defaultdict(set)
 
-    G = networkx.DiGraph()
+    filtered_stmts_by_cell_type = ac.run_preassembly(filtered_stmts_by_cell_type,
+                                                     run_refinement=False)
+    # Assemble the statements into HTML formatted report and save into a file
+    indra_op_html_report = \
+        html_assembler(
+            filtered_stmts_by_cell_type,
+            fname=os.path.join(OUTPUT,
+                               'filtered_ligand_enzyme_interactions.html'))
 
-    top10_lg_rc = dict(sorted(itertools.islice(ligandsFC_by_receptor.items(), 10)))
-    top10_en = dict(itertools.islice(sorted_enzyme_FC.items(), 10))
+    # Plotting interaction Di-graph for all the cell-types
+    create_interaction_digraph(ligandsFC_by_receptor, sorted_enzyme_FC, fname='')
 
-    for FC_lg, rcs in top10_lg_rc.items():
-        for rc in rcs:
-            G.add_node(FC_lg[1], color='green')
-            G.add_edge(FC_lg[1], rc, label="{:.2f}".format(FC_lg[0]))
-    for en_FC, en in top10_en.items():
-        for chem in enzyme_product_dict[en]:
-            for rcs in products_receptors[chem]:
-                G.add_node(en, color='red')
-                G.add_edge(en, chem, label="{:.2f}".format(en_FC))
-                G.add_edge(chem, rcs)
+    ### Downstream analysis
 
-    G.graph.setdefault('graph', {})['rankdir'] = 'LR'
-    ag = networkx.nx_agraph.to_agraph(G)
-    fname = os.path.join(OUTPUT, "interactions_digraph.pdf")
-    ag.draw(fname, prog='dot')
+    # Human pain genetics db
+    gene_symbol = [str(g).split(",") for g in human_pain_df['gene_symbols']]
+    pain_phenotype = [str(p).split(",") for p in human_pain_df['phenotype_description']]
+    pheno_direction = human_pain_df['phenotype_direction']
+    pain_pheno_dict = defaultdict(set)
 
+    # Import ctd database
+    # Opening JSON file and loading the data
+    # into the variable data
+    with open(os.path.join(INPUT, 'ctd_db.json')) as json_file:
+        data = json.load(json_file)
 
-    ## Downstream analysis
+    ctd_db_json = data['associations']
+
+    # now we will open a file for writing
+    data_file = open(os.path.join(INPUT, 'ctd_db.csv'), 'w')
+
+    # create the csv writer object
+    csv_writer = csv.writer(data_file)
+
+    # Counter variable used for writing
+    # headers to the CSV file
+    count = 0
+
+    for emp in ctd_db_json:
+        if count == 0:
+            # Writing headers of CSV file
+            header = emp.keys()
+            csv_writer.writerow(header)
+            count += 1
+
+        # Writing data of CSV file
+        csv_writer.writerow(emp.values())
+    data_file.close()
+
+    # Read the csv back and clean it
+    ctd_csv = pd.read_csv(os.path.join(INPUT, 'ctd_db.csv'), header=0)
+    count = 0
+    # Clean the gene column
+    for r, c in ctd_csv.iterrows():
+        gene = re.search("symbol': '([A-Z0-9]+)", c[0]).group(1)
+        ctd_csv['gene'][count] = gene
+        count += 1
+
+    # Creating a dictionary of ctd genes
+    # as keys and its respective Standarized values
+    # as values
+    ctd_geneset = dict()
+    for r, c in ctd_csv.iterrows():
+        ctd_geneset[c[0]] = c[2]
+
     INDRA_SIF = os.path.join(INPUT, 'sif.pkl')
 
     with open(INDRA_SIF, 'rb') as indra_sif:
@@ -1096,14 +1209,20 @@ if __name__ == '__main__':
     downstream_evidence = dict()
     downstream_stmts = defaultdict(set)
     rc_in_data_dwnstrm = set()
+    upstream = defaultdict(set)
+    not_upstream = defaultdict(set)
+
     for a, b, ev, hs in zip(indra_sif.agA_name,
                             indra_sif.agB_name,
                             indra_sif.evidence_count,
                             indra_sif.stmt_hash):
+
+        upstream[(b)].add(a)
         if a in receptor_genes_go:
             downstream_hits[(b)].add(a)
             if b not in downstream_evidence:
                 downstream_evidence[b] = ev
+
             else:
                 downstream_evidence[b] = downstream_evidence[b] + ev
 
@@ -1111,18 +1230,213 @@ if __name__ == '__main__':
         if a in receptors_in_data:
             rc_in_data_dwnstrm.add(b)
 
+    targets_keys = list(targets_by_drug.keys())
+    targets_values = list(targets_by_drug.values())
+
+    ds_in_data = defaultdict(set)
+    drug_names = defaultdict(set)
+    drug_no_names = defaultdict(set)
+
+    for drug, targets in targets_by_drug.items():
+        for t in targets:
+            if t in downstream_hits.keys():
+                if drug[0].startswith('CHEMBL'):
+                    drug_no_names[(t)].add(drug[0])
+                else:
+                    drug_names[(t)].add(drug[0])
+
+    # Below code is to aggregate all the
+    # downstream hits and its pain pheno direction
+    ds_direction_dict = dict()
+    pheno_direction = human_pain_df['phenotype_direction']
+    for k in downstream_hits.keys():
+        for g, p, pdir in zip(gene_symbol,
+                              pain_phenotype,
+                              pheno_direction):
+            if k in g:
+                p = "".join(p)
+                if k + ":" + p + ":" + pdir in ds_direction_dict:
+                    ds_direction_dict[k + ":" + p + ":" + pdir] = ds_direction_dict[k + ":" + p + ":" + pdir] + 1
+                else:
+                    ds_direction_dict[k + ":" + p + ":" + pdir] = 1
+    d = defaultdict(set)
+    for t in ds_direction_dict:
+        d[re.match("([a-zA-Z0-9-]+)(.*)", t).group(1)].add(
+            re.match("([a-zA-Z0-9-]+:)(.*)", t).group(2) + ":" + str(ds_direction_dict[t]))
+
+    # Creating a dictionary of downstream targets as keys
+    # its values as pain phenotype description
+    for k in downstream_hits.keys():
+        for g, p in zip(gene_symbol, pain_phenotype):
+            if k in g:
+                pain_pheno_dict[(k)].add("".join(p))
+
     downstream_df = []
     for ds, us in downstream_hits.items():
-        if ds in rc_in_data_dwnstrm:
+        if ds in receptor_genes:
+            total_interactome = len(receptors_in_data)
+            total_non_interactome = len(receptor_genes_go - receptors_in_data)
+            interactome_genes = len(receptors_in_data & downstream_hits[ds])
+            non_interactome_genes = len(downstream_hits[ds] - receptors_in_data)
+
+            pval = fisher_exact([[interactome_genes, non_interactome_genes],
+                                 [total_interactome, total_non_interactome]],
+                                alternative='greater')[1]
+
+            if ds in drug_names:
+                drugs_names = ", ".join(drug_names[ds])
+            else:
+                drugs_names = 'NA'
+
+            if ds in drug_no_names:
+                drugs_no_names = ", ".join(drug_no_names[ds])
+            else:
+                drugs_no_names = 'NA'
+
+            if ds in ctd_geneset:
+                ctd_gene = 1
+                std_val = ctd_geneset[ds]
+            else:
+                ctd_gene = 0
+                std_val = 0
+
+            if ds in d:
+                pain_phenotype_des = ", ".join(d[ds])
+            else:
+                pain_phenotype_des = 'NA'
+
             downstream_df.append(
                 {
-                    "Upstream mol": ", ".join(us),
+                    "Upstream genes": ", ".join(us),
+                    "Upstream in interacome": ", ".join(receptors_in_data & downstream_hits[ds]),
                     "Downstream target": ds,
+                    "CTD_DB": ctd_gene,
+                    "CTD_Std_Val": std_val,
+                    "Pain description": pain_phenotype_des,
+                    "Named drugs": drugs_names,
+                    "Unnamed drugs": drugs_no_names,
                     "evidence count": downstream_evidence[ds],
+                    "Total upstream": len(us),
+                    "Total upstream in interactome": interactome_genes,
+                    "pval": pval,
                     "Statement hash": ', '.join(str(x) for x in downstream_stmts[ds])
                 }
             )
-    downstream_df = pd.DataFrame(downstream_df).sort_values(by=['evidence count'],
-                                                            ascending=False)
+    downstream_df = pd.DataFrame(downstream_df).sort_values(by=['pval'],
+                                                            ascending=True)
 
-    downstream_df.to_csv(os.path.join(OUTPUT, "downstream_hits.csv"), sep=",", header=True, index=False)
+    downstream_df.to_csv(os.path.join(OUTPUT, "downstream_hits_filtered_pval.csv"),
+                         sep=",", header=True, index=False)
+
+    # Creating layout aspect
+    ligandsFC_by_receptor = dict(sorted(ligandsFC_by_receptor.items(),
+                                        reverse=True))
+
+    G = Digraph(engine='dot')
+
+    top_lg_rc = dict(sorted(itertools.islice(ligandsFC_by_receptor.items(), 10)))
+    top_en = dict(itertools.islice(sorted_enzyme_FC.items(), 10))
+
+    for FC_lg, rcs in top_lg_rc.items():
+        for rc in rcs:
+            G.node(FC_lg[1], color='green')
+            G.edge(FC_lg[1], rc, label="{:.2f}".format(FC_lg[0]))
+    for en_FC, en in top_en.items():
+        for chem in enzyme_product_dict[en]:
+            for rcs in products_receptors[chem]:
+                G.node(en, color='red')
+                G.edge(en, chem, label="{:.2f}".format(en_FC))
+                G.edge(chem, rcs)
+
+    G.graph_attr['rankdir'] = 'LR'
+
+    # decode the Digraph to JSON format
+    json_string = G.pipe('json').decode()
+
+    # parse the resulting json_string
+    json_dict = json.loads(json_string)
+    layout_aspect = []
+    for obj in json_dict['objects']:
+        cord = obj['pos'].split(',')
+        layout_aspect.append(
+            {
+                'node': obj['name'],
+                'x': float(cord[0]),
+                'y': float(cord[1])
+            }
+        )
+
+    # Assembling the top interactions in the interactome into
+    # INDRA statements
+    top_lg_rc = dict(sorted(itertools.islice(ligandsFC_by_receptor.items(), 10)))
+    top_en = dict(itertools.islice(sorted_enzyme_FC.items(), 10))
+
+    ## Get enzyme product statements
+    en_product = defaultdict(set)
+    en_fc = dict()
+    en_fc_stmts = defaultdict(set)
+
+    for k, v in top_en.items():
+        for chem in enzyme_product_dict[v]:
+            en_product[(v)].add(chem)
+            en_fc[v] = k
+            # get statements for the enzyme products
+    for a, b, hs in zip(df.agA_name,
+                        df.agB_name,
+                        df.stmt_hash):
+        if a in en_product and b in en_product[a]:
+            en_fc_stmts[(en_fc[a], a, b)].add(hs)
+
+            ## Get ligand receptor statements
+    lg_fc = dict()
+    lg_rc = defaultdict(set)
+    lg_rc_stmts = defaultdict(set)
+    for k, v in top_lg_rc.items():
+        lg_fc[k[1]] = k[0]
+        lg_rc[(k[1])].update(v)
+
+    for a, b, hs in zip(df.agA_name,
+                        df.agB_name,
+                        df.stmt_hash):
+        if a in lg_rc and b in lg_rc[a]:
+            lg_rc_stmts[(lg_fc[a], a, b)].add(hs)
+
+    ## Get enzyme product receptor statements
+    chem_rc = defaultdict(set)
+    chem_stmts = defaultdict(set)
+
+    for en_FC, en in top_en.items():
+        for chem in enzyme_product_dict[en]:
+            for rcs in products_receptors[chem]:
+                chem_rc[(chem)].add(rcs)
+
+    # get statements for the enzyme products and receptors
+    for a, b, hs in zip(df.agA_name,
+                        df.agB_name,
+                        df.stmt_hash):
+        if a in chem_rc and b in chem_rc[a]:
+            chem_stmts[(a, b)].add(hs)
+
+    en_hs = [h for s in en_fc_stmts.values() for h in s]
+    lg_hs = [h for s in lg_rc_stmts.values() for h in s]
+    chem_rc = [h for s in chem_stmts.values() for h in s]
+    merged_hs = en_hs + lg_hs + chem_rc
+
+    stmts_by_hash = download_statements(merged_hs)
+    indra_db_stmts = list(stmts_by_hash.values())
+
+    # Filtering out the indirect INDRA statements
+    indra_db_stmts = ac.filter_direct(indra_db_stmts)
+    indra_filtered = ac.run_preassembly(indra_db_stmts,
+                                        run_refinement=False)
+
+    # bens snippet
+    cxa = CxAssembler(indra_filtered,
+                      network_name='neuro_interactome')
+    cxa.make_model()
+    cxa.cx['cartesianLayout'] = layout_aspect
+
+    cxa.save_model(os.path.join(OUTPUT, 'test.cx'))
+
+    ndex_network_id = cxa.upload_model(ndex_cred=None,
+                                       private=True, style='default')

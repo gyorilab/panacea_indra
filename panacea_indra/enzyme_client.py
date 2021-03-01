@@ -6,7 +6,7 @@ from indra.ontology.bio import bio_ontology
 ENZYME_URL = 'ftp://ftp.expasy.org/databases/enzyme/enzyme.dat'
 PC_SIF_URL = ('https://www.pathwaycommons.org/archives/PC2/v12/'
               'PathwayCommons12.Detailed.hgnc.sif.gz')
-
+#PC_SIF_URL = '/Users/sbunga/PycharmProjects/INDRA/ligandReceptorInteractome/input/PathwayCommons12.Detailed.hgnc.sif'
 
 def load_enzyme_data(dat_str):
     enzyme_data = {}
@@ -56,14 +56,17 @@ def get_controller_enzymes(chebi_ids):
 
 def get_enzyme_products(de_enzymes):
     df = pd.read_csv(PC_SIF_URL, sep='\t', header=None)
+    logFC_list = list(de_enzymes.keys())
+    de_enzymes_list = list(de_enzymes.values())
     filtered_df = [
         {
             'Enzyme': s[0],
             'Interaction': s[1],
-            'product': s[2]
+            'product': s[2],
+            'logFC' : logFC_list[de_enzymes_list.index(s[0])]
         }
         for _, s in df.iterrows()
-            if s[0] in de_enzymes and re.match('controls-production-of', s[1])
+            if s[0] in de_enzymes_list and re.match('controls-production-of', s[1])
     ]
 
     # If there are any CHEBI ID's, then convert
@@ -71,9 +74,10 @@ def get_enzyme_products(de_enzymes):
     filtered_df = pd.DataFrame(filtered_df)
     for rows, s in filtered_df.iterrows():
         if s[2].startswith("CHEBI"):
-            filtered_df['product'][rows] = \
+            filtered_df.at[rows, 'product'] = \
             bio_ontology.get_name('CHEBI', s[2])
-    return filtered_df
+    return filtered_df.sort_values(by='logFC', ascending=False)
+
 
 
 def get_pain_interactions(df, PAIN_MOL_NAMES):
