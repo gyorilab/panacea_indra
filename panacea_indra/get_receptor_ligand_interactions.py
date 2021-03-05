@@ -1329,6 +1329,7 @@ if __name__ == '__main__':
                          sep=",", header=True, index=False)
 
     # Creating layout aspect
+
     ligandsFC_by_receptor = dict(sorted(ligandsFC_by_receptor.items(),
                                         reverse=True))
 
@@ -1355,16 +1356,6 @@ if __name__ == '__main__':
 
     # parse the resulting json_string
     json_dict = json.loads(json_string)
-    layout_aspect = []
-    for obj in json_dict['objects']:
-        cord = obj['pos'].split(',')
-        layout_aspect.append(
-            {
-                'node': obj['name'],
-                'x': float(cord[0]),
-                'y': float(cord[1])
-            }
-        )
 
     # Assembling the top interactions in the interactome into
     # INDRA statements
@@ -1378,16 +1369,18 @@ if __name__ == '__main__':
 
     for k, v in top_en.items():
         for chem in enzyme_product_dict[v]:
-            en_product[(v)].add(chem)
-            en_fc[v] = k
-            # get statements for the enzyme products
+            if len(products_receptors[chem]) >= 1:
+                en_product[(v)].add(chem)
+                en_fc[v] = k
+
+    # get statements for the enzyme products
     for a, b, hs in zip(df.agA_name,
                         df.agB_name,
                         df.stmt_hash):
         if a in en_product and b in en_product[a]:
             en_fc_stmts[(en_fc[a], a, b)].add(hs)
 
-            ## Get ligand receptor statements
+    ## Get ligand receptor statements
     lg_fc = dict()
     lg_rc = defaultdict(set)
     lg_rc_stmts = defaultdict(set)
@@ -1417,10 +1410,15 @@ if __name__ == '__main__':
         if a in chem_rc and b in chem_rc[a]:
             chem_stmts[(a, b)].add(hs)
 
+    # Concatenating all the staatements into a list
+    agents = set(list(lg_rc.keys()) + list(chem_rc.keys()) + list(en_product.keys()) \
+                 + [r for v in lg_rc.values() for r in v] + [r for v in chem_rc.values() for r in v] + \
+                 [r for v in en_product.values() for r in v])
+
     en_hs = [h for s in en_fc_stmts.values() for h in s]
     lg_hs = [h for s in lg_rc_stmts.values() for h in s]
-    chem_rc = [h for s in chem_stmts.values() for h in s]
-    merged_hs = en_hs + lg_hs + chem_rc
+    chem_rc_hs = [h for s in chem_stmts.values() for h in s]
+    merged_hs = en_hs + lg_hs + chem_rc_hs
 
     stmts_by_hash = download_statements(merged_hs)
     indra_db_stmts = list(stmts_by_hash.values())
@@ -1430,13 +1428,42 @@ if __name__ == '__main__':
     indra_filtered = ac.run_preassembly(indra_db_stmts,
                                         run_refinement=False)
 
+    # Remove agents from complex statements
+    # which are not in the interactome
+    for stmt in indra_filtered:
+        if isinstance(stmt, Complex):
+            # Statement updated by reference here
+            stmt.members = [agent for agent in stmt.members
+                            if agent.name in agents or agent.name in agents]
+
     # bens snippet
     cxa = CxAssembler(indra_filtered,
                       network_name='neuro_interactome')
     cxa.make_model()
-    cxa.cx['cartesianLayout'] = layout_aspect
 
     cxa.save_model(os.path.join(OUTPUT, 'test.cx'))
+    with open(os.path.join(OUTPUT, 'test.cx'), 'r') as fh:
+        cx = json.load(fh)
+    graph = hub_layout.cx_to_networkx(cx)
 
+    # Get node ids
+    n_id = dict()
+    for id, attrs in graph.nodes(data=True):
+        n_id[id] = attrs['n']
+
+    # Creating layout aspect
+    layout_aspect = []
+    for obj in json_dict['objects']:
+        cord = obj['pos'].split(',')
+        if obj['_gvid'] in n_id:
+            layout_aspect.append(
+                {
+                    'node': obj['_gvid'],
+                    'x': float(cord[0]),
+                    'y': float(cord[1])
+                }
+            )
+
+    cxa.cx['cartesianLayout'] = layout_aspect
     ndex_network_id = cxa.upload_model(ndex_cred=None,
                                        private=True, style='default')
