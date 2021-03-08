@@ -411,7 +411,7 @@ def plot_interaction_potential(num_interactions_by_cell_type, fname):
 
 def get_all_enzymes():
     HOME = str(Path.home())
-    ec_code_path = '.obo/raw/ec-code/ec-code.obo'
+    ec_code_path = '.obo/ec-code/ec-code.obo'
     if not os.path.exists(os.path.join(HOME, ec_code_path)):
         _ = pyobo.get_id_name_mapping('ec-code')
         obo = obonet.read_obo(os.path.join(HOME, ec_code_path))
@@ -1200,9 +1200,7 @@ if __name__ == '__main__':
     for r, c in ctd_csv.iterrows():
         ctd_geneset[c[0]] = c[2]
 
-    INDRA_SIF = os.path.join(INPUT, 'sif.pkl')
-
-    with open(INDRA_SIF, 'rb') as indra_sif:
+    with open(INDRA_DB_PKL, 'rb') as indra_sif:
         indra_sif = pickle.load(indra_sif)
 
     downstream_hits = defaultdict(set)
@@ -1352,10 +1350,10 @@ if __name__ == '__main__':
     G.graph_attr['rankdir'] = 'LR'
 
     # decode the Digraph to JSON format
-    json_string = G.pipe('json').decode()
+    graphviz_json_string = G.pipe('json').decode()
 
     # parse the resulting json_string
-    json_dict = json.loads(json_string)
+    graphviz_json_dict = json.loads(graphviz_json_string)
 
     # Assembling the top interactions in the interactome into
     # INDRA statements
@@ -1410,7 +1408,7 @@ if __name__ == '__main__':
         if a in chem_rc and b in chem_rc[a]:
             chem_stmts[(a, b)].add(hs)
 
-    # Concatenating all the staatements into a list
+    # Concatenating all the statements into a list
     agents = set(list(lg_rc.keys()) + list(chem_rc.keys()) + list(en_product.keys()) \
                  + [r for v in lg_rc.values() for r in v] + [r for v in chem_rc.values() for r in v] + \
                  [r for v in en_product.values() for r in v])
@@ -1440,29 +1438,25 @@ if __name__ == '__main__':
     cxa = CxAssembler(indra_filtered,
                       network_name='neuro_interactome')
     cxa.make_model()
-
-    cxa.save_model(os.path.join(OUTPUT, 'test.cx'))
-    with open(os.path.join(OUTPUT, 'test.cx'), 'r') as fh:
-        cx = json.load(fh)
-    graph = hub_layout.cx_to_networkx(cx)
-
-    # Get node ids
-    n_id = dict()
-    for id, attrs in graph.nodes(data=True):
-        n_id[id] = attrs['n']
+    cx_node_name_to_id = {node['n']: node['@id']
+                          for node in cxa.cx['nodes']}
 
     # Creating layout aspect
     layout_aspect = []
-    for obj in json_dict['objects']:
+    for obj in graphviz_json_dict['objects']:
         cord = obj['pos'].split(',')
-        if obj['_gvid'] in n_id:
-            layout_aspect.append(
-                {
-                    'node': obj['_gvid'],
-                    'x': float(cord[0]),
-                    'y': float(cord[1])
-                }
-            )
+        node_name = obj['name']
+        cx_node_id = cx_node_name_to_id.get(node_name)
+        if not cx_node_id:
+            logger.info('The node %s is not in the CX network' % node_name)
+            continue
+        layout_aspect.append(
+            {
+                'node': cx_node_id,
+                'x': float(cord[0]),
+                'y': float(cord[1])
+            }
+        )
 
     cxa.cx['cartesianLayout'] = layout_aspect
     ndex_network_id = cxa.upload_model(ndex_cred=None,
