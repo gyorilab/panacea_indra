@@ -142,8 +142,18 @@ if __name__ == '__main__':
                           for k, v in um.uniprot_gene_name.items()
                           if k in um.uniprot_mgi}
 
+    #IMMUNE_CELLTYPE_LIST = ['DCs',
+    #                        'Dermal Macs']
+
+
     IMMUNE_CELLTYPE_LIST = ['DCs',
-                            'Dermal Macs']
+                            'Dermal Macs',
+                            'M2a',
+                            'M2b',
+                            'Monocytes',
+                            'Resident Mac',
+                            'Mast cells'
+                            ]
 
     ligands_df = pd.DataFrame(columns=['Genes', 'p_val'])
     ligands_FC = {}
@@ -273,7 +283,7 @@ if __name__ == '__main__':
 
 
         # Get the list of ligands from the cell type
-        ligands_in_data = list(ligands_fc_df['Ligands'])
+        #ligands_in_data = list(ligands_fc_df['Ligands'])
 
         with open(cell_type+'_ligands_in_data.pkl', 'wb') as fh:
             pickle.dump(ligands_in_data, fh)

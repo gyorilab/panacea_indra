@@ -1,8 +1,8 @@
 #!/usr/bin/env nextflow
 
 params.input = "/Users/sbunga/PycharmProjects/INDRA/ligandReceptorInteractome/input/"
-params.output = "/Users/sbunga/PycharmProjects/nextflow/output/"
-params.pkl = "/Users/sbunga/PycharmProjects/nextflow/output/pkl"
+params.output = "/Users/sbunga/gitHub/panacea_indra/panacea_indra/nextflow/output/"
+params.pkl = "/Users/sbunga/gitHub/panacea_indra/panacea_indra/nextflow/output/pkl"
 
 
 goa_human = Channel.fromPath( "$params.input/goa_human.gaf" )
@@ -75,17 +75,22 @@ process cell_types{
 }
 
 
+ligands_in_data.into { lg_1; lg_2; lg_3; lg_4 }
 
-process get_cell_type_indra_statements{
+process get_cell_type_indra_statements {
     
     cache 'lenient'
 
     input:
     file 'HASHES_BY_GENE_PAIR' from hashes_by_gene_pair
-    file 'LIGANDS_IN_DATA' from ligands_in_data
+    file 'LIGANDS_IN_DATA' from lg_1
 
     output:
-    stdout result
+    file 'possible_drug_targets.pkl' into possible_drug_targets
+    file 'possible_db_drug_targets.pkl' into possible_db_drug_targets
+    file 'stmts_db_by_cell_type.pkl' into stmts_db_by_cell_type
+    file 'stmts_by_cell_type.pkl' into stmts_by_cell_type
+
 
     script:
     """
@@ -94,7 +99,33 @@ process get_cell_type_indra_statements{
 
 }
 
-result.view({it.trim()})
+
+
+
+process plot_interaction_potential{
+    cache 'lenient'
+
+    input:
+    file 'LIGANDS_IN_DATA' from lg_2
+    file 'STMTS_DB_BY_CELL_TYPE' from stmts_db_by_cell_type
+
+    output:
+
+
+    script:
+    """
+    python3 $workflow.projectDir/scripts/plot_interaction_potential.py --input $params.input --output $params.output \
+    --stmts_db_by_cell_type STMTS_DB_BY_CELL_TYPE --ligands_in_data LIGANDS_IN_DATA*
+    """
+}
+
+
+
+
+
+
+
+
 
 /*
 process test{

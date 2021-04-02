@@ -148,6 +148,14 @@ if __name__ == '__main__':
                             'Dermal Macs']
 
 
+    IMMUNE_CELLTYPE_LIST = ['DCs',
+                            'Dermal Macs',
+                            'M2a',
+                            'M2b',
+                            'Monocytes',
+                            'Resident Mac',
+                            'Mast cells'
+                            ]
     with open(os.path.join(OUTPUT, 'receptors_in_data.pkl'), 'rb') as fh:
         receptors_in_data = pickle.load(fh)
 
@@ -178,7 +186,7 @@ if __name__ == '__main__':
         indra_db_stmts = ac.filter_direct(indra_db_stmts)
         # Filter statements which are not ligands/receptors from
         # OmniPath database
-        op_filtered = filter_op_stmts(op.statements, ligands_in_data,
+        op_filtered = filter_op_stmts(op.statements, ligands_in_data.values(),
                                       receptors_in_data)
         # Merge omnipath/INDRA statements and run assembly
         indra_op_stmts = ac.run_preassembly(indra_db_stmts + op_filtered,
@@ -189,7 +197,7 @@ if __name__ == '__main__':
 
         # Filter complex statements
         indra_op_filtered = filter_complex_statements(indra_op_filtered,
-                                                      ligands_in_data,
+                                                      ligands_in_data.values(),
                                                       receptors_in_data)
 
         # We do this again because when removing complex members, we
@@ -284,14 +292,14 @@ if __name__ == '__main__':
         # create a dictionary of receptors as keys and its repective
         # ligands as values
         ligands_by_receptor = get_ligands_by_receptor(receptors_in_data,
-                                                      set(ligands_in_data),
+                                                      set(ligands_in_data.values()),
                                                       stmts_by_cell_type[cell_type])
 
         # create a dictionary of receptors as keys and its repective
         # ligands as values from ligands and receptors with filtered database
         # statements
         ligands_by_receptor_db = get_ligands_by_receptor(receptors_in_data,
-                                                         set(ligands_in_data),
+                                                         set(ligands_in_data.values()),
                                                          stmts_db_by_cell_type[cell_type])
 
 
@@ -300,5 +308,19 @@ if __name__ == '__main__':
         possible_db_drug_targets |= set(ligands_by_receptor_db.keys())
 
         count += 1
+
+    with open('stmts_by_cell_type.pkl', 'wb') as fh:
+        pickle.dump(stmts_by_cell_type, fh)
+
+    with open('stmts_db_by_cell_type.pkl', 'wb') as fh:
+        pickle.dump(stmts_db_by_cell_type, fh)
+
+    with open('possible_drug_targets.pkl', 'wb') as fh:
+        pickle.dump(possible_drug_targets, fh)
+
+    with open('possible_db_drug_targets.pkl', 'wb') as fh:
+        pickle.dump(possible_db_drug_targets, fh)
+
+
 
 
