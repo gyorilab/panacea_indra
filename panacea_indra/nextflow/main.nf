@@ -66,6 +66,7 @@ process cell_types{
     file '*_pain_interactions.pkl' into pain_interactions
     file '*_hashes_by_gene_pair.pkl' into hashes_by_gene_pair
     file '*_ligands_in_data.pkl' into ligands_in_data
+    file 'de_enzyme_product_list.pkl' into de_enzyme_product_list
 
     script:
     """
@@ -90,6 +91,7 @@ process get_cell_type_indra_statements {
     file 'possible_db_drug_targets.pkl' into possible_db_drug_targets
     file 'stmts_db_by_cell_type.pkl' into stmts_db_by_cell_type
     file 'stmts_by_cell_type.pkl' into stmts_by_cell_type
+    file 'all_ligand_receptor_statements.pkl' into all_ligand_receptor_statements
 
 
     script:
@@ -140,7 +142,23 @@ process get_small_mol_report{
 
 
 
+process get_enzyme_interactions{
+    
+    cache 'lenient'
 
+    input:
+    file 'all_ligand_receptor_statements.pkl' from all_ligand_receptor_statements
+    file 'de_enzyme_product_list.pkl' from de_enzyme_product_list
+
+    output:
+    file 'products_receptors.pkl' into products_receptors
+
+    script:
+    """
+    python3 $workflow.projectDir/scripts/get_enzyme_interactions.py $params.input $params.output \
+    $de_enzyme_product_list.pkl $all_ligand_receptor_statements.pkl
+    """
+}
 
 /*
 process test{

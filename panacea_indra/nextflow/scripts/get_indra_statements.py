@@ -323,6 +323,13 @@ if __name__ == '__main__':
     with open('possible_db_drug_targets.pkl', 'wb') as fh:
         pickle.dump(possible_db_drug_targets, fh)
 
+    with open("all_ligand_receptor_statements.pkl", 'wb') as fh:
+        pickle.dump(all_ranked_lg_df, fh)
+
+    all_ranked_lg_df.to_csv(os.path.join(OUTPUT, 'all_ligand_receptor_statements.csv'),
+                            header=True,
+                            index=False)
+
 
 
 

@@ -278,6 +278,9 @@ if __name__ == '__main__':
         with open(cell_type+'_hashes_by_gene_pair.pkl', 'wb') as fh:
             pickle.dump(hashes_by_gene_pair, fh)
 
+        with open('de_enzyme_product_list.pkl', 'wb') as fh:
+            pickle.dump(de_enzyme_product_list, fh)
+
         # Create a dictionary of enzymes and its foldchange
         for fc, en in enzymes_in_data.items():
             possible_en_drug_targets[(fc)].add(en)
