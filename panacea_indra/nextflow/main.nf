@@ -49,7 +49,7 @@ process main_inputs {
 }
 
 
-
+targets_by_drug.into {td1; td2; td3; td4}
 
 process cell_types{
     
@@ -58,7 +58,7 @@ process cell_types{
     input:
     file ALL_ENZYMES from all_enzymes
     file FULL_LIGAND_SET from full_ligand_set
-    file TARGETS_BY_DRUG from targets_by_drug
+    file TARGETS_BY_DRUG from td1
 
     output:
     file '*_enzyme_product_dict.pkl' into enzyme_product_dict
@@ -101,7 +101,6 @@ process get_cell_type_indra_statements {
 
 
 
-
 process plot_interaction_potential{
     cache 'lenient'
 
@@ -121,7 +120,23 @@ process plot_interaction_potential{
 
 
 
+process get_small_mol_report{
+    
+    cache 'lenient'
 
+    input:
+    file TARGETS_BY_DRUG from td2
+    file 'POSSIBLE_DRUG_TARGETS' from possible_drug_targets
+    file 'POSSIBLE_DB_DRUG_TARGETS' from possible_db_drug_targets
+
+    output:
+
+    script:
+    """
+    python3 $workflow.projectDir/scripts/get_small_mol_report.py $params.input $params.output  $TARGETS_BY_DRUG \
+    $POSSIBLE_DRUG_TARGETS $POSSIBLE_DB_DRUG_TARGETS 
+    """
+}
 
 
 
