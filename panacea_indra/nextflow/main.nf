@@ -147,16 +147,16 @@ process get_enzyme_interactions{
     cache 'lenient'
 
     input:
-    file 'all_ligand_receptor_statements.pkl' from all_ligand_receptor_statements
-    file 'de_enzyme_product_list.pkl' from de_enzyme_product_list
+    file 'ALL_LIGAND_RECEPTOR_STATEMENTS' from all_ligand_receptor_statements
+    file 'DE_ENZYME_PRODUCT_LIST' from de_enzyme_product_list
 
     output:
     file 'products_receptors.pkl' into products_receptors
 
     script:
     """
-    python3 $workflow.projectDir/scripts/get_enzyme_interactions.py $params.input $params.output \
-    $de_enzyme_product_list.pkl $all_ligand_receptor_statements.pkl
+    python3 $workflow.projectDir/scripts/get_enzyme_interactions.py $params.input $params.output $DE_ENZYME_PRODUCT_LIST \
+    $ALL_LIGAND_RECEPTOR_STATEMENTS
     """
 }
 

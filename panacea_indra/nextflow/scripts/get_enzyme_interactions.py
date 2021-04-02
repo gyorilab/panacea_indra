@@ -1,13 +1,20 @@
+import os
+import re
+import sys
 import tqdm
+import pickle
+import logging
 import pandas as pd
 from indra.util import batch_iter
 from collections import defaultdict
+from indra.statements import Complex
 from indra.sources import indra_db_rest
 import indra.tools.assemble_corpus as ac
 from indra.assemblers.html import HtmlAssembler
 from indra_db.client.principal.curation import get_curations
 
 
+logger = logging.getLogger('receptor_ligand_interactions')
 
 def filter_incorrect_curations(stmts):
   # Filter incorrect curations
@@ -75,6 +82,31 @@ def make_interaction_df(interaction_dict):
     return df
 
 
+def load_indra_df(fname):
+    """Return an INDRA Statement data frame from a pickle file."""
+    logger.info('Loading INDRA DB dataframe')
+    with open(fname, 'rb') as fh:
+        df = pickle.load(fh)
+    logger.info('Loaded %d rows from %s' % (len(df), fname))
+    return df
+
+
+def filter_complex_statements(stmts, ligands, receptors):
+    for stmt in stmts:
+        if isinstance(stmt, Complex):
+            # Statement updated by reference here
+            _filter_complex(stmt, ligands, receptors)
+    return stmts
+
+
+def _filter_complex(stmt, lg, rg):
+    """Filter out the genes from Complex statements which
+    are not present in the given ligand/receptor list"""
+    stmt.members = [agent for agent in stmt.members
+                    if agent.name in lg or agent.name in rg]
+    return stmt
+
+
 db_curations = get_curations()
 
 
@@ -83,6 +115,8 @@ if __name__ == '__main__':
   INPUT = sys.argv[1]
   OUTPUT = sys.argv[2]
   DE_ENZYME_PRODUCT_LIST = sys.argv[3]
+  ALL_LIGAND_RECEPTOR_STATEMENTS = sys.argv[4]
+
 
   INDRA_DB_PKL = os.path.join(INPUT, 'db_dump_df.pkl')
   # Load the INDRA DB DF
@@ -173,9 +207,9 @@ if __name__ == '__main__':
   ### Ligand receptor interactions
   # Make a dataframe of ligand
   # receptor interactions
-  with open('all_ligand_receptor_statements.pkl', 'rb') as fh:
+  with open(ALL_LIGAND_RECEPTOR_STATEMENTS, 'rb') as fh:
       all_ranked_lg_df = pickle.load(fh)
-      
+
   ranked_lg_dict = defaultdict(set)
   for r, c in all_ranked_lg_df.iterrows():
       ranked_lg_dict[(c[1])].add((c[0], 'NA'))
