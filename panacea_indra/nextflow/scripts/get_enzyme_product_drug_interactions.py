@@ -58,7 +58,7 @@ if __name__ == '__main__':
     with open(TARGETS_BY_DRUG, 'rb') as fh:
         targets_by_drug = pickle.load(fh)
 
-    with open('enzyme_product_dict.pkl', 'rb') as fh:
+    with open(ENZYME_PRODUCT_DICT, 'rb') as fh:
         enzyme_product_dict = pickle.load(fh)
 
             
