@@ -127,18 +127,20 @@ if __name__ == '__main__':
     parser.add_argument("--output")
     parser.add_argument("--hashes_by_gene_pair", nargs='+')
     parser.add_argument("--ligands_in_data", nargs='+')
+    parser.add_argument("--enzyme_possible_drug_targets")
     args = parser.parse_args()
 
     HASHES_BY_GENE_PAIR = args.hashes_by_gene_pair
     LIGANDS_IN_DATA = args.ligands_in_data
+    POSSIBLE_DRUG_TARGETS = args.enzyme_possible_drug_targets
     INPUT = args.input
     OUTPUT = args.output
+
 
 
     
     stmts_by_cell_type = {}
     stmts_db_by_cell_type = {}
-    possible_drug_targets = set()
     possible_db_drug_targets = set()
     all_ranked_lg_df = pd.DataFrame(columns=['Interaction statement',
                                          'logFC'])
@@ -160,6 +162,10 @@ if __name__ == '__main__':
     '''
     with open(os.path.join(OUTPUT, 'receptors_in_data.pkl'), 'rb') as fh:
         receptors_in_data = pickle.load(fh)
+
+    with open(POSSIBLE_DRUG_TARGETS, 'rb') as fh:
+        possible_drug_targets = pickle.load(fh)
+
 
     count = 0
 
@@ -297,12 +303,18 @@ if __name__ == '__main__':
                                                       set(ligands_in_data.values()),
                                                       stmts_by_cell_type[cell_type])
 
+        with open(cell_type+'_ligands_by_receptor.pkl', 'wb') as fh:
+            pickle.dump(ligands_by_receptor, fh)
+
         # create a dictionary of receptors as keys and its repective
         # ligands as values from ligands and receptors with filtered database
         # statements
         ligands_by_receptor_db = get_ligands_by_receptor(receptors_in_data,
                                                          set(ligands_in_data.values()),
                                                          stmts_db_by_cell_type[cell_type])
+
+        with open(cell_type+'_ligands_by_receptor_db.pkl', 'wb') as fh:
+            pickle.dump(ligands_by_receptor_db, fh)
 
 
         # Take a union of receptors from ligands by receptor dictionary

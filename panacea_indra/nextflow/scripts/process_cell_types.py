@@ -231,9 +231,6 @@ if __name__ == '__main__':
         for r, c in de_enzyme_product_interaction.iterrows():
             enzyme_product_dict[(c[0])].add(c[2])
 
-        with open(cell_type+'_enzyme_product_dict.pkl', 'wb') as fh:
-            pickle.dump(enzyme_product_dict, fh)
-
         # Keep merging enzyme products interactions from all the celltypes
         de_enzyme_product_list = get_de_product_list(de_enzyme_product_list,
                                                      de_enzyme_product_interaction)
@@ -292,6 +289,22 @@ if __name__ == '__main__':
 
         with open(cell_type+'_ligands_in_data.pkl', 'wb') as fh:
             pickle.dump(ligands_in_data, fh)
+
+    
+    with open(os.path.join(OUTPUT, 'enzymes_in_data.pkl'), 'wb') as fh:
+        pickle.dump(enzymes_in_data, fh)
+
+    with open('enzyme_product_dict.pkl', 'wb') as fh:
+        pickle.dump(enzyme_product_dict, fh)
+
+    with open('possible_en_drug_targets.pkl', 'wb') as fh:
+        pickle.dump(possible_en_drug_targets, fh)
+
+    with open('enzyme_possible_drug_targets.pkl', 'wb') as fh:
+        pickle.dump(possible_drug_targets, fh)
+
+
+
 
 
 

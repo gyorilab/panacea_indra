@@ -51,6 +51,7 @@ process main_inputs {
 
 targets_by_drug.into {td1; td2; td3; td4}
 
+
 process cell_types{
     
     cache 'lenient'
@@ -61,12 +62,14 @@ process cell_types{
     file TARGETS_BY_DRUG from td1
 
     output:
-    file '*_enzyme_product_dict.pkl' into enzyme_product_dict
+    file 'enzyme_product_dict.pkl' into enzyme_product_dict
     file '*_de_enzyme_product_interaction.pkl' into de_enzyme_product_interaction
     file '*_pain_interactions.pkl' into pain_interactions
     file '*_hashes_by_gene_pair.pkl' into hashes_by_gene_pair
     file '*_ligands_in_data.pkl' into ligands_in_data
     file 'de_enzyme_product_list.pkl' into de_enzyme_product_list
+    file 'possible_en_drug_targets.pkl' into possible_en_drug_targets
+    file 'enzyme_possible_drug_targets.pkl' into enzyme_possible_drug_targets
 
     script:
     """
@@ -76,7 +79,9 @@ process cell_types{
 }
 
 
+
 ligands_in_data.into { lg_1; lg_2; lg_3; lg_4 }
+
 
 process get_cell_type_indra_statements {
     
@@ -85,6 +90,7 @@ process get_cell_type_indra_statements {
     input:
     file 'HASHES_BY_GENE_PAIR' from hashes_by_gene_pair
     file 'LIGANDS_IN_DATA' from lg_1
+    file 'ENZYME_POSSIBLE_DRUG_TARGETS' from enzyme_possible_drug_targets
 
     output:
     file 'possible_drug_targets.pkl' into possible_drug_targets
@@ -92,14 +98,16 @@ process get_cell_type_indra_statements {
     file 'stmts_db_by_cell_type.pkl' into stmts_db_by_cell_type
     file 'stmts_by_cell_type.pkl' into stmts_by_cell_type
     file 'all_ligand_receptor_statements.pkl' into all_ligand_receptor_statements
-
+    file '*_ligands_by_receptor.pkl' into ligands_by_receptor
+    file '*_ligands_by_receptor_db.pkl' into ligands_by_receptor_db
 
     script:
     """
-    python3 $workflow.projectDir/scripts/get_indra_statements.py --input $params.input --output $params.output --hashes_by_gene_pair HASHES_BY_GENE_PAIR* --ligands_in_data LIGANDS_IN_DATA*
+    python3 $workflow.projectDir/scripts/get_indra_statements.py --input $params.input --output $params.output --hashes_by_gene_pair HASHES_BY_GENE_PAIR* --ligands_in_data LIGANDS_IN_DATA* --enzyme_possible_drug_targets ENZYME_POSSIBLE_DRUG_TARGETS
     """
 
 }
+
 
 
 
@@ -121,6 +129,7 @@ process plot_interaction_potential{
 }
 
 
+possible_drug_targets.into {pdt1; pdt2}
 
 process get_small_mol_report{
     
@@ -128,7 +137,7 @@ process get_small_mol_report{
 
     input:
     file TARGETS_BY_DRUG from td2
-    file 'POSSIBLE_DRUG_TARGETS' from possible_drug_targets
+    file 'POSSIBLE_DRUG_TARGETS' from pdt1
     file 'POSSIBLE_DB_DRUG_TARGETS' from possible_db_drug_targets
 
     output:
@@ -160,6 +169,34 @@ process get_enzyme_interactions{
     """
 }
 
+
+/*
+process get_enzyme_product_drug_interactions{
+    
+    cache 'lenient'
+
+    input:
+    file POSSIBLE_EN_DRUG_TARGETS from possible_en_drug_targets
+    file TARGETS_BY_DRUG from td3
+    file ENZYME_PRODUCT_DICT from enzyme_product_dict
+    file 'LIGANDS_BY_RECEPTOR' from ligands_by_receptor
+
+
+    output:
+
+
+    script:
+    """
+    python3 $workflow.projectDir/scripts/get_enzyme_product_drug_interactions.py --input $params.input \
+    --output $params.output \
+    --possible_en_drug_targets $POSSIBLE_EN_DRUG_TARGETS \
+    --targets_by_drug $TARGETS_BY_DRUG \
+    --enzyme_product_dict $ENZYME_PRODUCT_DICT \
+    --ligands_by_receptor LIGANDS_BY_RECEPTOR*
+    """
+}
+
+*/
 /*
 process test{
     
@@ -184,34 +221,3 @@ result.view({it.trim()})
 
 
 
-/*
-process part_2 {
-
-    cache 'lenient'
-
-    input:
-    file ALL_ENZYMES from all_enzymes
-    file FULL_LIGAND_SET from full_ligand_set
-    file RECEPTORS_IN_DATA from receptors_by_drug
-    file TARGETS_BY_DRUG from targets_by_drug
-
-    
-    output:
-    file "possible_en_drug_targets.pkl" into possible_en_drug_targets
-    file "ligands_FC.pkl" into ligands_FC
-    file "enzymes_FC.pkl" into enzymes_FC
-    file "stmts_db_by_cell_type.pkl" into stmts_db_by_cell_type
-    file "stmts_by_cell_type.pkl" into stmts_by_cell_type
-    file "enzyme_product_dict.pkl" into enzyme_product_dict
-    file "de_enzyme_products.pkl" into de_enzyme_products
-    file "all_ligand_receptor_statements.pkl" into all_ligand_receptor_statements
-    file "ligands_by_receptor.pkl" into ligands_by_receptor
-    
-
-    script:
-    """
-    python3 $workflow.projectDir/scripts/p2.py $params.input $params.output $ALL_ENZYMES \
-    $FULL_LIGAND_SET $RECEPTORS_IN_DATA $TARGETS_BY_DRUG
-    """
-}
-*/
