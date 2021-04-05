@@ -303,6 +303,12 @@ if __name__ == '__main__':
     with open('enzyme_possible_drug_targets.pkl', 'wb') as fh:
         pickle.dump(possible_drug_targets, fh)
 
+    with open('ligands_FC.pkl', 'wb') as fh:
+        pickle.dump(ligands_FC, fh)
+
+    with open('enzymes_FC.pkl', 'wb') as fh:
+        pickle.dump(enzymes_FC, fh)
+
 
 
 

@@ -70,6 +70,8 @@ process cell_types{
     file 'de_enzyme_product_list.pkl' into de_enzyme_product_list
     file 'possible_en_drug_targets.pkl' into possible_en_drug_targets
     file 'enzyme_possible_drug_targets.pkl' into enzyme_possible_drug_targets
+    file 'ligands_FC.pkl' into ligands_FC
+    file 'enzymes_FC.pkl' into enzymes_FC
 
     script:
     """
@@ -81,7 +83,7 @@ process cell_types{
 
 
 ligands_in_data.into { lg_1; lg_2; lg_3; lg_4 }
-
+enzyme_product_dict.into {en_pd_1; en_pd_2; en_pd_3}
 
 process get_cell_type_indra_statements {
     
@@ -110,13 +112,15 @@ process get_cell_type_indra_statements {
 
 
 
+stmts_db_by_cell_type.into {stmt_db_cell_type_1; stmt_db_cell_type_2; stmt_db_cell_type_3;}
+
 
 process plot_interaction_potential{
     cache 'lenient'
 
     input:
     file 'LIGANDS_IN_DATA' from lg_2
-    file 'STMTS_DB_BY_CELL_TYPE' from stmts_db_by_cell_type
+    file 'STMTS_DB_BY_CELL_TYPE' from stmt_db_cell_type_1
 
     output:
 
@@ -170,7 +174,7 @@ process get_enzyme_interactions{
 }
 
 
-/*
+
 process get_enzyme_product_drug_interactions{
     
     cache 'lenient'
@@ -178,7 +182,7 @@ process get_enzyme_product_drug_interactions{
     input:
     file POSSIBLE_EN_DRUG_TARGETS from possible_en_drug_targets
     file TARGETS_BY_DRUG from td3
-    file ENZYME_PRODUCT_DICT from enzyme_product_dict
+    file ENZYME_PRODUCT_DICT from en_pd_1
     file 'LIGANDS_BY_RECEPTOR' from ligands_by_receptor
 
 
@@ -196,7 +200,39 @@ process get_enzyme_product_drug_interactions{
     """
 }
 
-*/
+
+process create_digraph{
+    
+    cache 'lenient'
+
+    input:
+    file ENZYME_PRODUCT_DICT from en_pd_2
+    file PRODUCTS_RECEPTORS from products_receptors
+    file STMT_DB_CELL_TYPE from stmt_db_cell_type_2
+    file LIGANDS_FC from ligands_FC
+    file ENZYMES_FC from enzymes_FC
+
+
+    output:
+    stdout result
+
+
+    script:
+    """
+    python3 $workflow.projectDir/scripts/create_digraph.py --input $params.input \
+    --output $params.output \
+    --enzyme_product_dict $ENZYME_PRODUCT_DICT \
+    --products_receptors $PRODUCTS_RECEPTORS \
+    --stmts_db_by_cell_type $STMT_DB_CELL_TYPE \
+    --enzymes_FC $ENZYMES_FC \
+    --ligands_FC $LIGANDS_FC
+    """
+}
+
+
+
+
+
 /*
 process test{
     
