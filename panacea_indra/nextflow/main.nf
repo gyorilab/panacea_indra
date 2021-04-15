@@ -31,7 +31,6 @@ process main_inputs {
     file DRUG_BANK_PKL from drugbank_pkl
     file ION_CHANNELS from ion_channels
     file SURFACE_PROTEINS_WB from surface_proteins
-    file HUMAN_PAIN_DB from Human_Pain_Genes_DB
     file LIGAND_RECEPTOR_SPREADSHEET from ligand_receptor_spreadsheet
     
 
@@ -46,7 +45,7 @@ process main_inputs {
     python3 $workflow.projectDir/scripts/process_main_inputs.py $params.input $params.output\
     targets_by_drug.pkl receptors_in_data.pkl all_enzymes.pkl full_ligand_set.pkl \
     $GO_ANNOTATIONS $DATA_SPREADSHEET $DRUG_BANK_PKL $ION_CHANNELS $SURFACE_PROTEINS_WB \
-    $HUMAN_PAIN_DB $LIGAND_RECEPTOR_SPREADSHEET
+    $LIGAND_RECEPTOR_SPREADSHEET
     """
 }
 
@@ -232,6 +231,25 @@ process create_digraph{
 }
 
 
+process downstream_analysis{
+    
+    cache 'lenient'
+
+    input:
+    file HUMAN_PAIN_GENES_DB from Human_Pain_Genes_DB
+
+
+
+    output:
+
+
+    script:
+    python3 $workflow.projectDir/scripts/downstream_analysis.py --input $params.input \
+    --output $params.output \
+    --human_pain_db HUMAN_PAIN_GENES_DB 
+
+
+}
 
 
 
