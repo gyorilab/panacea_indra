@@ -17,6 +17,7 @@ surface_proteins = Channel.fromPath( "$params.input/Surface Proteins.xlsx" )
 
 Human_Pain_Genes_DB = Channel.fromPath( "$params.input/Human_Pain_Genes_DB.tsv" )
 
+ligand_receptor_spreadsheet = Channel.fromPath( "$params.input/ncomms8866-s3.xlsx")
 
 
 process main_inputs {
