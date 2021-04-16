@@ -23,33 +23,32 @@ def get_pain_phenotype(lg, pain_db):
 
 
 if __name__ == '__main__':
-	parser = argparse.ArgumentParser()
-	parser.add_argument("--input")
-	parser.add_argument("--output")
-	parser.add_argument("--human_pain_db")
-	args = parser.parse_args()
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--input")
+    parser.add_argument("--output")
+    parser.add_argument("--human_pain_db")
+    args = parser.parse_args()
+    
+    INPUT = args.input
+    OUTPUT = args.output
+    HUMAN_PAIN_DB = args.human_pain_db
 
-	INPUT = args.input
-	OUTPUT = args.output
-	HUMAN_PAIN_DB = args.human_pain_db
+    with open(os.path.join(OUTPUT, 'receptors_in_data.pkl'), 'rb') as fh:
+        receptors_in_data = pickle.load(fh)
 
-	with open(os.path.join(OUTPUT, 'receptors_in_data.pkl'), 'rb') as fh:
-		receptors_in_data = pickle.load(fh)
+    with open(os.path.join(INPUT, 'db_dump_df.pkl'), 'rb') as fh:
+        indra_sif = pickle.load(fh)
 
-	with open(os.path.join(INPUT, 'db_dump_df.pkl'), 'rb') as fh:
-		indra_sif = pickle.load(fh)
+    # Read human pain DB
+    human_pain_df = pd.read_csv(HUMAN_PAIN_DB, sep="\t", header=0)
 
-
-	# Read human pain DB
-	human_pain_df = pd.read_csv(HUMAN_PAIN_DB, sep="\t", header=0)
-
-	# Create a dictionary of receptors as keys
-	# and its respective pain phenotypes as values
-	r_phenotype_dict = get_pain_phenotype(receptors_in_data,
+    # Create a dictionary of receptors as keys
+    # and its respective pain phenotypes as values
+    r_phenotype_dict = get_pain_phenotype(receptors_in_data,
 	                                      human_pain_df)
 
 
-	### Downstream analysis
+    ### Downstream analysis
 
     # Human pain genetics db
     gene_symbol = [str(g).split(",") for g in human_pain_df['gene_symbols']]
