@@ -4,15 +4,56 @@ import sys
 import csv
 import json
 import pickle
+import datetime
 import argparse
+import openpyxl
 import pandas as pd
 from collections import defaultdict
 from scipy.stats import fisher_exact
+from indra.databases.uniprot_client import um
+from indra.databases.hgnc_client import get_hgnc_from_mouse, get_hgnc_name
+
+
+mouse_gene_name_to_mgi = {v: um.uniprot_mgi.get(k)
+                          for k, v in um.uniprot_gene_name.items()
+                          if k in um.uniprot_mgi}
+
+
+def fix_dates(gene_names):
+    replacements = {
+        datetime.datetime(2020, 3, 7, 0, 0): 'March7',
+        datetime.datetime(2020, 3, 2, 0, 0): 'March2',
+        datetime.datetime(2020, 3, 4, 0, 0): 'March4',
+        datetime.datetime(2020, 3, 5, 0, 0): 'March5',
+        datetime.datetime(2020, 3, 6, 0, 0): 'March6',
+        datetime.datetime(2020, 3, 9, 0, 0): 'March9',
+        datetime.datetime(2020, 3, 8, 0, 0): 'March8',
+        datetime.datetime(2020, 3, 11, 0, 0): 'Mar11',
+        datetime.datetime(2020, 9, 1, 0, 0): 'Sept1',
+        datetime.datetime(2020, 9, 2, 0, 0): 'Sept2',
+        datetime.datetime(2020, 9, 3, 0, 0): 'Sept3',
+        datetime.datetime(2020, 9, 4, 0, 0): 'Sept4',
+        datetime.datetime(2020, 9, 5, 0, 0): 'Sept5',
+        datetime.datetime(2020, 9, 6, 0, 0): 'Sept6',
+        datetime.datetime(2020, 9, 7, 0, 0): 'Sept7',
+        datetime.datetime(2020, 9, 8, 0, 0): 'Sept8',
+        datetime.datetime(2020, 9, 9, 0, 0): 'Sept9',
+        datetime.datetime(2020, 9, 10, 0, 0): 'Sept10',
+        datetime.datetime(2020, 9, 11, 0, 0): 'Sept11',
+        datetime.datetime(2020, 9, 15, 0, 0): 'Sept15',
+    }
+    fixed_gene_names = set()
+    for gene_name in gene_names:
+        if isinstance(gene_name, datetime.datetime):
+            fixed_gene_names.add(replacements[gene_name])
+        else:
+            fixed_gene_names.add(gene_name)
+    return fixed_gene_names
 
 
 def get_pain_phenotype(lg, pain_db):
-	r_phenotype = defaultdict(set)
-	for r, c in pain_db.iterrows():
+    r_phenotype = defaultdict(set)
+    for r, c in pain_db.iterrows():
         if isinstance(pain_db.iloc[r]['gene_symbols'], str):
             l = set(pain_db.iloc[r]['gene_symbols'].split(","))
             pheno = pain_db.iloc[r]['phenotype_description']
@@ -22,22 +63,84 @@ def get_pain_phenotype(lg, pain_db):
     return r_phenotype
 
 
+def read_workbook(workbook):
+    """ This function takes Excel workbook as an input and
+    returns ligand and receptor gene list respectively.
+    Input: Excel workbook with single(2 columns) or two sheets
+    Condition: considers first column/sheet as ligand genes and second
+    column/shet as receptor genes
+    """
+    ligands_sheet = 'updated list of ligands '
+    receptors_sheet = 'RPKM > 1.5 cfiber'
+    wb = openpyxl.load_workbook(workbook)
+    ligands = fix_dates(set([row[0].value for row in wb[ligands_sheet]][1:]))
+    receptors = fix_dates(set([row[0].value
+                               for row in wb[receptors_sheet]][1:]))
+    return ligands, receptors
+
+
+def ligand_mgi_to_hgnc_name(seurat_ligand_genes):
+    filtered_mgi = defaultdict(set)
+    for logfc, gene in seurat_ligand_genes.items():
+        if gene in mouse_gene_name_to_mgi:
+            filtered_mgi[(gene, logfc)].add(mouse_gene_name_to_mgi[gene])
+
+    hgnc_gene_dict = defaultdict(set)
+    seen_genes = set()
+    for key, value in filtered_mgi.items():
+        mgi_id = next(iter(value))
+        hgnc_id = get_hgnc_from_mouse(mgi_id)
+        hgnc_symbol = get_hgnc_name(hgnc_id)
+        if hgnc_symbol not in seen_genes:
+            hgnc_gene_dict[(key[1])].add(hgnc_symbol)
+        else:
+            pass
+        seen_genes.add(hgnc_symbol)
+    return hgnc_gene_dict
+
+
+def mgi_to_hgnc_name(gene_list):
+    """Convert given mouse gene symbols to HGNC equivalent symbols"""
+    filtered_mgi = {mouse_gene_name_to_mgi[gene] for gene in gene_list
+                    if gene in mouse_gene_name_to_mgi}
+    hgnc_gene_set = set()
+    for mgi_id in filtered_mgi:
+        hgnc_id = get_hgnc_from_mouse(mgi_id)
+        hgnc_gene_set.add(get_hgnc_name(hgnc_id))
+    return hgnc_gene_set
+
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument("--input")
     parser.add_argument("--output")
     parser.add_argument("--human_pain_db")
+    parser.add_argument("--receptor_genes_go")
+    parser.add_argument("--targets_by_drug")
     args = parser.parse_args()
     
     INPUT = args.input
     OUTPUT = args.output
     HUMAN_PAIN_DB = args.human_pain_db
+    RECEPTOR_GENES_GO = args.receptor_genes_go
+    TARGETS_BY_DRUG = args.targets_by_drug
+    DATA_SPREADSHEET = os.path.join(INPUT, 'Neuroimmune gene list .xlsx')
 
     with open(os.path.join(OUTPUT, 'receptors_in_data.pkl'), 'rb') as fh:
         receptors_in_data = pickle.load(fh)
 
+    with open(RECEPTOR_GENES_GO, 'rb') as fh:
+        receptor_genes_go = pickle.load(fh)
+
     with open(os.path.join(INPUT, 'db_dump_df.pkl'), 'rb') as fh:
         indra_sif = pickle.load(fh)
+
+    with open(TARGETS_BY_DRUG, 'rb') as fh:
+        targets_by_drug = pickle.load(fh)
+
+
+    _, raw_receptor_genes = read_workbook(DATA_SPREADSHEET)
+    receptor_genes = mgi_to_hgnc_name(raw_receptor_genes)
 
     # Read human pain DB
     human_pain_df = pd.read_csv(HUMAN_PAIN_DB, sep="\t", header=0)
@@ -116,16 +219,15 @@ if __name__ == '__main__':
                             indra_sif.agB_name,
                             indra_sif.evidence_count,
                             indra_sif.stmt_hash):
-    	upstream[(b)].add(a)
+        upstream[(b)].add(a)
         if a in receptor_genes_go:
             downstream_hits[(b)].add(a)
             if b not in downstream_evidence:
                 downstream_evidence[b] = ev
-
             else:
                 downstream_evidence[b] = downstream_evidence[b] + ev
-
             downstream_stmts[(b)].add(hs)
+
         if a in receptors_in_data:
             rc_in_data_dwnstrm.add(b)
 

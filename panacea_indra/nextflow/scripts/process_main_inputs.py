@@ -33,7 +33,8 @@ DATA_SPREADSHEET = sys.argv[8]
 DRUG_BANK_PKL = sys.argv[9]
 ION_CHANNELS = sys.argv[10]
 SURFACE_PROTEINS_WB = sys.argv[11]
-LIGAND_RECEPTOR_SPREADSHEET = sys.argv[12]
+RECEPTOR_GENES_GO = sys.argv[12]
+#LIGAND_RECEPTOR_SPREADSHEET = sys.argv[12]
 
 
 logger = logging.getLogger('receptor_ligand_interactions')
@@ -198,7 +199,7 @@ if __name__ == '__main__':
 
     # Get 2015 ligand receptor direct interactions dataframe from
     # the spreadsheet
-    lg_rg = process_df(LIGAND_RECEPTOR_SPREADSHEET)
+    #lg_rg = process_df(LIGAND_RECEPTOR_SPREADSHEET)
 
     GOA = _load_goa_gaf(GO_ANNOTATIONS)
     # Read and extract cell surface proteins from CSPA DB
@@ -298,3 +299,6 @@ if __name__ == '__main__':
 
     with open(FULL_LIGAND_SET, 'wb') as fh:
         pickle.dump(full_ligand_set, fh)
+
+    with open(RECEPTOR_GENES_GO, 'wb') as fh:
+        pickle.dump(receptor_genes_go, fh)
