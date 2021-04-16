@@ -230,7 +230,7 @@ process create_digraph{
     """
 }
 
-
+/*
 process downstream_analysis{
     
     cache 'lenient'
@@ -244,14 +244,15 @@ process downstream_analysis{
 
 
     script:
+    """
     python3 $workflow.projectDir/scripts/downstream_analysis.py --input $params.input \
     --output $params.output \
-    --human_pain_db HUMAN_PAIN_GENES_DB 
+    --human_pain_db HUMAN_PAIN_GENES_DB
+    """
 
 
 }
-
-
+*/
 
 /*
 process test{

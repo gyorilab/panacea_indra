@@ -68,11 +68,11 @@ if __name__ == '__main__':
         stmts_db_by_cell_type = pickle.load(fh)
 
 
-    IMMUNE_CELLTYPE_LIST = ['DCs',
-                            'Dermal Macs']
+    #IMMUNE_CELLTYPE_LIST = ['DCs',
+    #                        'Dermal Macs']
 
 
-    '''
+
     IMMUNE_CELLTYPE_LIST = ['DCs',
                             'Dermal Macs',
                             'M2a',
@@ -81,7 +81,7 @@ if __name__ == '__main__':
                             'Resident Mac',
                             'Mast cells'
                             ]
-    '''
+
     count = 0 
     for cell_type in IMMUNE_CELLTYPE_LIST:
 

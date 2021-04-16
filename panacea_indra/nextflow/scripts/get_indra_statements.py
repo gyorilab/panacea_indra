@@ -146,11 +146,11 @@ if __name__ == '__main__':
                                          'logFC'])
 
 
-    IMMUNE_CELLTYPE_LIST = ['DCs',
-                            'Dermal Macs']
+    #IMMUNE_CELLTYPE_LIST = ['DCs',
+    #                        'Dermal Macs']
 
 
-    '''
+
     IMMUNE_CELLTYPE_LIST = ['DCs',
                             'Dermal Macs',
                             'M2a',
@@ -159,7 +159,7 @@ if __name__ == '__main__':
                             'Resident Mac',
                             'Mast cells'
                             ]
-    '''
+
     with open(os.path.join(OUTPUT, 'receptors_in_data.pkl'), 'rb') as fh:
         receptors_in_data = pickle.load(fh)
 

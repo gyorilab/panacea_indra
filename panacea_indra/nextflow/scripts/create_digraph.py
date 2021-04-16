@@ -121,31 +121,33 @@ if __name__ == '__main__':
   cell_type_stmts = defaultdict(set)
 
   for cell_type in stmts_db_by_cell_type.keys():
-      stmts = stmts_db_by_cell_type[cell_type]
-      for stmt in stmts:
-          agent_names = {agent.name for agent in stmt.agent_list()}
-          receptors = agent_names & receptors_in_data
-          ligands = "".join(agent_names & set(lg))
-          if len(ligands) > 0 and ligands not in receptors:
-              filtered_stmts_by_cell_type.append(stmt)
-              en_logFC = lg_fc[lg.index(ligands)]
-              for receptor in receptors:
-                  # Storing the interactions in a dictionary
-                  # for each cell type and plot di-graphs
-                  cell_type_stmts[(en_logFC, ligands)].add(receptor)
+    stmts = stmts_db_by_cell_type[cell_type]
+    cell_type_stmts = defaultdict(set)
+    for stmt in stmts:
+        agent_names = {agent.name for agent in stmt.agent_list()}
+        receptors = agent_names & receptors_in_data
+        ligands = agent_names & set(lg)
+        if len(ligands) > 0 and ligands not in receptors:
+            for ligand in ligands:
+                filtered_stmts_by_cell_type.append(stmt)
+                lg_logFC = lg_fc[lg.index(ligand)]
+                for receptor in receptors:
+                    # Storing the interactions in a dictionary
+                    # for each cell type and plot di-graphs
+                    cell_type_stmts[(lg_logFC, ligand)].add(receptor)
 
-                  # Storing interactions for all the cell-types
-                  ligandsFC_by_receptor[(en_logFC, ligands)].add(receptor)
+                    # Storing interactions for all the cell-types
+                    ligandsFC_by_receptor[(lg_logFC, ligand)].add(receptor)
 
-      # Plot interactions for each cell type
-      create_interaction_digraph(cell_type_stmts, sorted_enzyme_FC,
-                                 os.path.join(cell_type,cell_type + "_"),
-                                 enzyme_product_dict,
-                                 products_receptors)
-      
-  # Reset the cell type statements dict
-  cell_type_stmts = defaultdict(set)
+    # Plot interactions for each cell type
+    create_interaction_digraph(cell_type_stmts,
+                               sorted_enzyme_FC,
+                               os.path.join(cell_type,cell_type + "_"),
+                               enzyme_product_dict,
+                               products_receptors)
 
+
+'''
   filtered_stmts_by_cell_type = ac.run_preassembly(filtered_stmts_by_cell_type,
                                                    run_refinement=False)
   # Assemble the statements into HTML formatted report and save into a file
@@ -161,3 +163,4 @@ if __name__ == '__main__':
                              '', 
                              enzyme_product_dict,
                              products_receptors)
+'''

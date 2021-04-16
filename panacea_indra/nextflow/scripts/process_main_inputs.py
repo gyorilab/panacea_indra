@@ -33,8 +33,7 @@ DATA_SPREADSHEET = sys.argv[8]
 DRUG_BANK_PKL = sys.argv[9]
 ION_CHANNELS = sys.argv[10]
 SURFACE_PROTEINS_WB = sys.argv[11]
-HUMAN_PAIN_DB = sys.argv[12]
-LIGAND_RECEPTOR_SPREADSHEET = sys.argv[13]
+LIGAND_RECEPTOR_SPREADSHEET = sys.argv[12]
 
 
 logger = logging.getLogger('receptor_ligand_interactions')
@@ -186,8 +185,7 @@ def read_workbook(workbook):
 
 def process_df(workbook):
     wb = openpyxl.load_workbook(workbook)
-    df = 
-    {
+    df = {
     'ligands': [row[1].value for row in wb['All.Pairs']][1:], 
     'receptors': [row[3].value for row in wb['All.Pairs']][1:]
     }
@@ -201,7 +199,7 @@ if __name__ == '__main__':
     # Get 2015 ligand receptor direct interactions dataframe from
     # the spreadsheet
     lg_rg = process_df(LIGAND_RECEPTOR_SPREADSHEET)
-    
+
     GOA = _load_goa_gaf(GO_ANNOTATIONS)
     # Read and extract cell surface proteins from CSPA DB
     wb = openpyxl.load_workbook(SURFACE_PROTEINS_WB)
