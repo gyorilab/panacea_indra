@@ -67,8 +67,10 @@ process cell_types{
     file 'enzyme_product_dict.pkl' into enzyme_product_dict
     file '*_de_enzyme_product_interaction.pkl' into de_enzyme_product_interaction
     file '*_pain_interactions.pkl' into pain_interactions
-    file '*_hashes_by_gene_pair.pkl' into hashes_by_gene_pair
+    //file '*_hashes_by_gene_pair.pkl' into hashes_by_gene_pair
     file '*_ligands_in_data.pkl' into ligands_in_data
+    file '*_2015_paper_hashes.pkl' into nature_paper_hashes
+
     file 'de_enzyme_product_list.pkl' into de_enzyme_product_list
     file 'possible_en_drug_targets.pkl' into possible_en_drug_targets
     file 'enzyme_possible_drug_targets.pkl' into enzyme_possible_drug_targets
@@ -92,22 +94,23 @@ process get_cell_type_indra_statements {
     cache 'lenient'
 
     input:
-    file 'HASHES_BY_GENE_PAIR' from hashes_by_gene_pair
+    //file 'HASHES_BY_GENE_PAIR' from hashes_by_gene_pair
     file 'LIGANDS_IN_DATA' from lg_1
     file 'ENZYME_POSSIBLE_DRUG_TARGETS' from enzyme_possible_drug_targets
+    file '2015_HASHES' from nature_paper_hashes
 
     output:
     file 'possible_drug_targets.pkl' into possible_drug_targets
     file 'possible_db_drug_targets.pkl' into possible_db_drug_targets
     file 'stmts_db_by_cell_type.pkl' into stmts_db_by_cell_type
     file 'stmts_by_cell_type.pkl' into stmts_by_cell_type
-    file 'all_ligand_receptor_statements.pkl' into all_ligand_receptor_statements
+    //file 'all_ligand_receptor_statements.pkl' into all_ligand_receptor_statements
     file '*_ligands_by_receptor.pkl' into ligands_by_receptor
     file '*_ligands_by_receptor_db.pkl' into ligands_by_receptor_db
 
     script:
     """
-    python3 $workflow.projectDir/scripts/get_indra_statements.py --input $params.input --output $params.output --hashes_by_gene_pair HASHES_BY_GENE_PAIR* --ligands_in_data LIGANDS_IN_DATA* --enzyme_possible_drug_targets ENZYME_POSSIBLE_DRUG_TARGETS
+    python3 $workflow.projectDir/scripts/get_indra_statements.py --input $params.input --output $params.output --ligands_in_data LIGANDS_IN_DATA* --enzyme_possible_drug_targets ENZYME_POSSIBLE_DRUG_TARGETS --nature_paper_hashes 2015_HASHES*
     """
 
 }
@@ -135,6 +138,7 @@ process plot_interaction_potential{
 }
 
 
+
 possible_drug_targets.into {pdt1; pdt2}
 
 process get_small_mol_report{
@@ -156,7 +160,7 @@ process get_small_mol_report{
 }
 
 
-
+/*
 process get_enzyme_interactions{
     
     cache 'lenient'
@@ -174,6 +178,7 @@ process get_enzyme_interactions{
     $ALL_LIGAND_RECEPTOR_STATEMENTS
     """
 }
+*/
 
 
 
@@ -203,16 +208,17 @@ process get_enzyme_product_drug_interactions{
 }
 
 
+
 process create_digraph{
     
     cache 'lenient'
 
     input:
-    file ENZYME_PRODUCT_DICT from en_pd_2
-    file PRODUCTS_RECEPTORS from products_receptors
-    file STMT_DB_CELL_TYPE from stmt_db_cell_type_2
+    //file ENZYME_PRODUCT_DICT from en_pd_2
+    //file PRODUCTS_RECEPTORS from products_receptors
+    file STMT_CELL_TYPE from stmts_by_cell_type
     file LIGANDS_FC from ligands_FC
-    file ENZYMES_FC from enzymes_FC
+    //file ENZYMES_FC from enzymes_FC
 
 
     output:
@@ -223,16 +229,13 @@ process create_digraph{
     """
     python3 $workflow.projectDir/scripts/create_digraph.py --input $params.input \
     --output $params.output \
-    --enzyme_product_dict $ENZYME_PRODUCT_DICT \
-    --products_receptors $PRODUCTS_RECEPTORS \
-    --stmts_db_by_cell_type $STMT_DB_CELL_TYPE \
-    --enzymes_FC $ENZYMES_FC \
+    --stmts_by_cell_type $STMT_CELL_TYPE \
     --ligands_FC $LIGANDS_FC
     """
 }
 
 
-
+/*
 process downstream_analysis{
     
     cache 'lenient'
@@ -259,8 +262,6 @@ process downstream_analysis{
 
 }
 
-
-/*
 process test{
     
     cache 'lenient'

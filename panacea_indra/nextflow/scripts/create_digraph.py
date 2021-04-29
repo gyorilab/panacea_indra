@@ -60,6 +60,34 @@ def create_interaction_digraph(ligand_receptors,
   ag.draw(fname, prog='dot')
 
 
+
+def create_interaction_digraph(ligand_receptors,
+                               fname):
+
+  ligand_receptors = dict(sorted(ligand_receptors.items(),
+                                 reverse=True))
+  G = networkx.DiGraph()
+
+  #top_lg_rc = dict(sorted(itertools.islice(ligand_receptors.items(), 30)))
+  #top_en = dict(itertools.islice(sorted_enzyme_FC.items(), 30))
+
+  for FC_lg, rcs in ligand_receptors.items():
+      for rc in rcs:
+          G.add_node(FC_lg[1], color='green')
+          G.add_edge(FC_lg[1], rc, label="{:.2f}".format(FC_lg[0]))
+  #for en_FC, en in top_en.items():
+  #    for chem in enzyme_product_dict[en]:
+  #        for rcs in products_receptors[chem]:
+  #           G.add_node(en, color='red')
+  #           G.add_edge(en, chem, label="{:.2f}".format(en_FC))
+  #           G.add_edge(chem, rcs)
+
+  G.graph.setdefault('graph', {})['rankdir'] = 'LR'
+  ag = networkx.nx_agraph.to_agraph(G)
+  fname = os.path.join(OUTPUT, fname + "interactions_digraph.pdf")
+  ag.draw(fname, prog='dot')
+
+
 def html_assembler(indra_stmts, fname):
   """Assemble INDRA statements into a HTML report"""
   html_assembler = HtmlAssembler(indra_stmts,
@@ -73,39 +101,39 @@ if __name__ == '__main__':
   parser = argparse.ArgumentParser()
   parser.add_argument("--input")
   parser.add_argument("--output")
-  parser.add_argument("--enzyme_product_dict")
-  parser.add_argument("--products_receptors")
-  parser.add_argument("--stmts_db_by_cell_type")
+  #parser.add_argument("--enzyme_product_dict")
+  #parser.add_argument("--products_receptors")
+  parser.add_argument("--stmts_by_cell_type")
   parser.add_argument("--ligands_FC")
   parser.add_argument("--enzymes_FC")
   args = parser.parse_args()
 
   INPUT = args.input
   OUTPUT = args.output
-  ENZYME_PRODUCT_DICT = args.enzyme_product_dict
-  PRODUCTS_RECEPTORS = args.products_receptors
-  STMT_DB_BY_CELL_TYPE = args.stmts_db_by_cell_type
+  #ENZYME_PRODUCT_DICT = args.enzyme_product_dict
+  #PRODUCTS_RECEPTORS = args.products_receptors
+  STMT_BY_CELL_TYPE = args.stmts_by_cell_type
   LIGANDS_FC = args.ligands_FC
-  ENZYMES_FC = args.enzymes_FC
+  #ENZYMES_FC = args.enzymes_FC
 
 
   # Di-graph of interactions between top 10 DE ligands, enzyme products
   # and receptors
 
-  with open(ENZYME_PRODUCT_DICT, 'rb') as fh:
-    enzyme_product_dict = pickle.load(fh)
+  #with open(ENZYME_PRODUCT_DICT, 'rb') as fh:
+  #  enzyme_product_dict = pickle.load(fh)
 
-  with open(PRODUCTS_RECEPTORS, 'rb') as fh:
-    products_receptors = pickle.load(fh)
+  #with open(PRODUCTS_RECEPTORS, 'rb') as fh:
+  #  products_receptors = pickle.load(fh)
       
   with open(LIGANDS_FC, 'rb') as fh:
     ligands_FC = pickle.load(fh)
 
-  with open(ENZYMES_FC, 'rb') as fh:
-    enzymes_FC = pickle.load(fh)
+  #with open(ENZYMES_FC, 'rb') as fh:
+  #  enzymes_FC = pickle.load(fh)
 
-  with open(STMT_DB_BY_CELL_TYPE, 'rb') as fh:
-    stmts_db_by_cell_type = pickle.load(fh)
+  with open(STMT_BY_CELL_TYPE, 'rb') as fh:
+    stmts_by_cell_type = pickle.load(fh)
 
   with open(os.path.join(OUTPUT, 'receptors_in_data.pkl'), 'rb') as fh:
     receptors_in_data = pickle.load(fh)
@@ -114,14 +142,14 @@ if __name__ == '__main__':
   ligands_logFC = defaultdict(set)
   ligandsFC_by_receptor = defaultdict(set)
   sorted_ligands_FC = dict(sorted(ligands_FC.items(), reverse=True))
-  sorted_enzyme_FC = dict(sorted(enzymes_FC.items(), reverse=True))
+  #sorted_enzyme_FC = dict(sorted(enzymes_FC.items(), reverse=True))
   lg_fc = list(sorted_ligands_FC.keys())
   lg = list(sorted_ligands_FC.values())
   filtered_stmts_by_cell_type = []
   cell_type_stmts = defaultdict(set)
 
-  for cell_type in stmts_db_by_cell_type.keys():
-    stmts = stmts_db_by_cell_type[cell_type]
+  for cell_type in stmts_by_cell_type.keys():
+    stmts = stmts_by_cell_type[cell_type]
     cell_type_stmts = defaultdict(set)
     for stmt in stmts:
         agent_names = {agent.name for agent in stmt.agent_list()}
@@ -129,7 +157,7 @@ if __name__ == '__main__':
         ligands = agent_names & set(lg)
         if len(ligands) > 0 and ligands not in receptors:
             for ligand in ligands:
-                filtered_stmts_by_cell_type.append(stmt)
+                #filtered_stmts_by_cell_type.append(stmt)
                 lg_logFC = lg_fc[lg.index(ligand)]
                 for receptor in receptors:
                     # Storing the interactions in a dictionary
@@ -141,12 +169,11 @@ if __name__ == '__main__':
 
     # Plot interactions for each cell type
     create_interaction_digraph(cell_type_stmts,
-                               sorted_enzyme_FC,
-                               os.path.join(cell_type,cell_type + "_"),
-                               enzyme_product_dict,
-                               products_receptors)
+                               os.path.join(cell_type, cell_type + "_"))
 
-
+  # Plot interactions for each cell type
+  create_interaction_digraph(ligandsFC_by_receptor,
+                              "")
 '''
   filtered_stmts_by_cell_type = ac.run_preassembly(filtered_stmts_by_cell_type,
                                                    run_refinement=False)

@@ -3,6 +3,7 @@ import sys
 import tqdm
 import pickle
 import logging
+import openpyxl
 import argparse
 import pandas as pd
 from indra.util import batch_iter
@@ -30,14 +31,35 @@ def download_statements(hashes):
     return stmts_by_hash
 
 
-def filter_op_stmts(op_stmts, lg, rg):
+def filter_op_stmts(op_stmts, lg, rg, nature_df):
     """ Filter out the statements which are not ligand and receptor """
     logger.info(f'Filtering {len(op_stmts)} to ligand-receptor interactions')
     filtered_stmts = [stmt for stmt in op_stmts if
                       (any(a.name in lg for a in stmt.agent_list())
                        and any(a.name in rg for a in stmt.agent_list()))]
     logger.info(f'{len(filtered_stmts)} left after filter')
-    return filtered_stmts
+
+    # Creating dictionary for ligands and receptors
+    # from 2015 paper
+    pairs = defaultdict(set)
+    for r,c in nature_df.iterrows():
+        pairs[(c[0])].add(c[1])
+
+    count = 0
+    not_in_paper = []
+
+    for stmts in filtered_stmts:
+        there = 0
+        for stmt in stmts.agent_list():
+            if stmt.name in pairs:
+                for v in pairs[stmt.name]:
+                    ag = [s.name for s in stmts.agent_list()]
+                    if v in ag:
+                        there = 1
+        if there != 1:
+            not_in_paper.append(stmts)
+    
+    return not_in_paper
 
 
 def filter_incorrect_curations(stmts):
@@ -118,6 +140,16 @@ def get_ligands_by_receptor(receptors_in_data, ligands_in_data, stmts):
     return dict(ligands_by_receptor)
 
 
+def process_df(workbook):
+    wb = openpyxl.load_workbook(workbook)
+    df = {
+    'ligands': [row[1].value for row in wb['All.Pairs']][1:], 
+    'receptors': [row[3].value for row in wb['All.Pairs']][1:]
+    }
+    lg_rg = pd.DataFrame(df)
+    return lg_rg
+
+
 db_curations = get_curations()
 
 if __name__ == '__main__':
@@ -125,16 +157,18 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument("--input")
     parser.add_argument("--output")
-    parser.add_argument("--hashes_by_gene_pair", nargs='+')
+    #parser.add_argument("--hashes_by_gene_pair", nargs='+')
     parser.add_argument("--ligands_in_data", nargs='+')
     parser.add_argument("--enzyme_possible_drug_targets")
+    parser.add_argument("--nature_paper_hashes", nargs='+')
     args = parser.parse_args()
 
-    HASHES_BY_GENE_PAIR = args.hashes_by_gene_pair
+    #HASHES_BY_GENE_PAIR = args.hashes_by_gene_pair
     LIGANDS_IN_DATA = args.ligands_in_data
     POSSIBLE_DRUG_TARGETS = args.enzyme_possible_drug_targets
     INPUT = args.input
     OUTPUT = args.output
+    NATURE_HASHES = args.nature_paper_hashes
 
 
 
@@ -166,6 +200,10 @@ if __name__ == '__main__':
     with open(POSSIBLE_DRUG_TARGETS, 'rb') as fh:
         possible_drug_targets = pickle.load(fh)
 
+    # Get 2015 ligand receptor direct interactions dataframe from
+    # the spreadsheet
+    lg_rg = process_df(os.path.join(INPUT, 'ncomms8866-s3.xlsx'))
+
 
     count = 0
 
@@ -177,15 +215,17 @@ if __name__ == '__main__':
         if not os.path.exists(output_dir):
             os.mkdir(output_dir)
 
-        with open(HASHES_BY_GENE_PAIR[count], 'rb') as fh:
-            hashes_by_gene_pair = pickle.load(fh)
+        #with open(HASHES_BY_GENE_PAIR[count], 'rb') as fh:
+        #    hashes_by_gene_pair = pickle.load(fh)
 
         with open(LIGANDS_IN_DATA[count], 'rb') as fh:
             ligands_in_data = pickle.load(fh)
 
+        with open(NATURE_HASHES[count], 'rb') as fh:
+            hashes = pickle.load(fh)
 
         # get the union of all the statement hashes
-        all_hashes = set.union(*hashes_by_gene_pair.values())
+        all_hashes = set.union(*hashes.values())
         # Download the statements by hashes
         stmts_by_hash = download_statements(all_hashes)
         # get only the list of all the available statemtns
@@ -193,9 +233,11 @@ if __name__ == '__main__':
         # Filtering out the indirect INDRA statements
         indra_db_stmts = ac.filter_direct(indra_db_stmts)
         # Filter statements which are not ligands/receptors from
-        # OmniPath database
+        # OmniPath database and filter op statemeents which are not
+        # in 2015 paper
         op_filtered = filter_op_stmts(op.statements, ligands_in_data.values(),
-                                      receptors_in_data)
+                                      receptors_in_data, lg_rg)
+
         # Merge omnipath/INDRA statements and run assembly
         indra_op_stmts = ac.run_preassembly(indra_db_stmts + op_filtered,
                                             run_refinement=False)
@@ -222,14 +264,59 @@ if __name__ == '__main__':
             pickle.dump(stmts_public, fh)
 
 
+        # Assemble the statements into HTML formatted report and save into a file
+        indra_op_html_report = \
+            html_assembler(
+                stmts_public,
+                fname=os.path.join(output_dir,
+                                   'indra_ligand_receptor_report.html'))
+
         # Store the cell type specific indra statements in a dictionary
         stmts_by_cell_type[cell_type] = indra_op_filtered
 
         # Filter statements to database only and store them
         # in a separate dictionary
-        stmts_db_by_cell_type[cell_type] = filter_db_only(indra_op_filtered)
+        stmts_db_by_cell_type[cell_type] = filter_db_only(stmts_public)
+
+        # create a dictionary of receptors as keys and its repective
+        # ligands as values
+        ligands_by_receptor = get_ligands_by_receptor(receptors_in_data,
+                                                      set(ligands_in_data.values()),
+                                                      stmts_by_cell_type[cell_type])
+
+        with open(cell_type+'_ligands_by_receptor.pkl', 'wb') as fh:
+            pickle.dump(ligands_by_receptor, fh)
+
+        # create a dictionary of receptors as keys and its repective
+        # ligands as values from ligands and receptors with filtered database
+        # statements
+        ligands_by_receptor_db = get_ligands_by_receptor(receptors_in_data,
+                                                         set(ligands_in_data.values()),
+                                                         stmts_db_by_cell_type[cell_type])
+
+        with open(cell_type+'_ligands_by_receptor_db.pkl', 'wb') as fh:
+            pickle.dump(ligands_by_receptor_db, fh)
 
 
+        # Take a union of receptors from ligands by receptor dictionary
+        possible_drug_targets |= set(ligands_by_receptor.keys())
+        possible_db_drug_targets |= set(ligands_by_receptor_db.keys())
+
+        count += 1
+
+    with open('stmts_by_cell_type.pkl', 'wb') as fh:
+        pickle.dump(stmts_by_cell_type, fh)
+
+    with open('stmts_db_by_cell_type.pkl', 'wb') as fh:
+        pickle.dump(stmts_db_by_cell_type, fh)
+
+    with open('possible_drug_targets.pkl', 'wb') as fh:
+        pickle.dump(possible_drug_targets, fh)
+
+    with open('possible_db_drug_targets.pkl', 'wb') as fh:
+        pickle.dump(possible_db_drug_targets, fh)
+
+        '''
         # Creating a dict of logFC as key and
         # ligand as its value for the respective cell type
         # from the hashes of ligands and receptors
@@ -289,51 +376,19 @@ if __name__ == '__main__':
         # Optional: Please configure the indra config file in
         # ~/.config/indra/config.ini with NDEx credentials to upload the
         # networks into the server
-        '''
+        
         indra_op_cx_report, ndex_network_id = \
             cx_assembler(
                 stmts_by_cell_type[cell_type],
                 fname=os.path.join(output_dir,
                                    'indra_ligand_receptor_report.cx'))
-        '''
+        
 
-        # create a dictionary of receptors as keys and its repective
-        # ligands as values
-        ligands_by_receptor = get_ligands_by_receptor(receptors_in_data,
-                                                      set(ligands_in_data.values()),
-                                                      stmts_by_cell_type[cell_type])
-
-        with open(cell_type+'_ligands_by_receptor.pkl', 'wb') as fh:
-            pickle.dump(ligands_by_receptor, fh)
-
-        # create a dictionary of receptors as keys and its repective
-        # ligands as values from ligands and receptors with filtered database
-        # statements
-        ligands_by_receptor_db = get_ligands_by_receptor(receptors_in_data,
-                                                         set(ligands_in_data.values()),
-                                                         stmts_db_by_cell_type[cell_type])
-
-        with open(cell_type+'_ligands_by_receptor_db.pkl', 'wb') as fh:
-            pickle.dump(ligands_by_receptor_db, fh)
+        
 
 
-        # Take a union of receptors from ligands by receptor dictionary
-        possible_drug_targets |= set(ligands_by_receptor.keys())
-        possible_db_drug_targets |= set(ligands_by_receptor_db.keys())
 
-        count += 1
 
-    with open('stmts_by_cell_type.pkl', 'wb') as fh:
-        pickle.dump(stmts_by_cell_type, fh)
-
-    with open('stmts_db_by_cell_type.pkl', 'wb') as fh:
-        pickle.dump(stmts_db_by_cell_type, fh)
-
-    with open('possible_drug_targets.pkl', 'wb') as fh:
-        pickle.dump(possible_drug_targets, fh)
-
-    with open('possible_db_drug_targets.pkl', 'wb') as fh:
-        pickle.dump(possible_db_drug_targets, fh)
 
     with open("all_ligand_receptor_statements.pkl", 'wb') as fh:
         pickle.dump(all_ranked_lg_df, fh)
@@ -341,6 +396,7 @@ if __name__ == '__main__':
     all_ranked_lg_df.to_csv(os.path.join(OUTPUT, 'all_ligand_receptor_statements.csv'),
                             header=True,
                             index=False)
+    '''
 
 
 

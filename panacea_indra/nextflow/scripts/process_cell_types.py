@@ -2,6 +2,7 @@ import os
 import sys
 import pickle
 import logging
+import openpyxl
 import pandas as pd
 import enzyme_client
 from collections import defaultdict
@@ -21,6 +22,7 @@ def load_indra_df(fname):
         df = pickle.load(fh)
     logger.info('Loaded %d rows from %s' % (len(df), fname))
     return df
+
 
 
 def process_seurat_csv(infile, fc):
@@ -112,7 +114,14 @@ def get_hashes_by_gene_pair(df, ligand_genes, receptor_genes):
     return hashes_by_gene_pair
 
 
-
+def process_df(workbook):
+    wb = openpyxl.load_workbook(workbook)
+    df = {
+    'ligands': [row[1].value for row in wb['All.Pairs']][1:], 
+    'receptors': [row[3].value for row in wb['All.Pairs']][1:]
+    }
+    lg_rg = pd.DataFrame(df)
+    return lg_rg
 
 
 if __name__ == '__main__':
@@ -167,14 +176,19 @@ if __name__ == '__main__':
     de_enzyme_product_list = set()
     possible_en_drug_targets = defaultdict(set)
     
+    # Get 2015 ligand receptor direct interactions dataframe from
+    # the spreadsheet
+    lg_rg = process_df(os.path.join(INPUT, 'ncomms8866-s3.xlsx'))
+
 
     for cell_type in IMMUNE_CELLTYPE_LIST:
         logger.info('Processing %s' % cell_type)
         enzyme_product_dict = defaultdict(set)
 
         INDRA_DB_PKL = os.path.join(INPUT, 'db_dump_df.pkl')
+        
         # Load the INDRA DB DF
-        df = load_indra_df(INDRA_DB_PKL)
+        indra_df = load_indra_df(INDRA_DB_PKL)
 
         output_dir = os.path.join(OUTPUT, cell_type)
         if not os.path.exists(output_dir):
@@ -184,7 +198,7 @@ if __name__ == '__main__':
         cell_type_full = 'TwoGroups_DEG1_%s_AJ' % cell_type
         LIGANDS_INFILE = os.path.join(INPUT, '%s.csv' % cell_type_full)
         # Extract markers from seurat dataframe with logFC >= 0.25 and
-            # pval <= 0.05
+        # pval <= 0.05
         seurat_ligand_genes = process_seurat_csv(LIGANDS_INFILE,
                                                 fc=0.25)
 
@@ -207,6 +221,19 @@ if __name__ == '__main__':
         # Retain only enzymes
         enzymes_in_data = {k: next(iter(v)) for k, v in ligand_genes.items()
                            if next(iter(v)) in all_enzymes}
+
+        custom_interactome = defaultdict(set)
+        for a,b in zip(lg_rg.ligands, lg_rg.receptors):
+            if a in ligands_in_data.values() and b in receptors_in_data:
+                custom_interactome[(a)].add(b)
+
+        hashes = defaultdict(set)
+        for a, b, hs in zip(indra_df.agA_name, 
+                            indra_df.agB_name,
+                            indra_df.stmt_hash):
+            if a in custom_interactome and b in custom_interactome[a]:
+                hashes[(a, b)].add(hs)
+
 
         # Keep all ligands with FC from all cell types
         ligands_FC.update(ligands_in_data)
@@ -270,8 +297,12 @@ if __name__ == '__main__':
         logger.info(f'Loaded {len(receptors_in_data)} receptor genes from data')
 
         # Now get INDRA DB Statements for the receptor-ligand pairs
-        hashes_by_gene_pair = get_hashes_by_gene_pair(df, ligands_in_data,
+        hashes_by_gene_pair = get_hashes_by_gene_pair(indra_df, ligands_in_data,
                                                       receptors_in_data)
+
+
+        with open(cell_type+'_2015_paper_hashes.pkl', 'wb') as fh:
+            pickle.dump(hashes, fh)
 
         with open(cell_type+'_hashes_by_gene_pair.pkl', 'wb') as fh:
             pickle.dump(hashes_by_gene_pair, fh)

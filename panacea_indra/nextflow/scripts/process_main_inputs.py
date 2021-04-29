@@ -184,22 +184,7 @@ def read_workbook(workbook):
     return ligands, receptors
 
 
-def process_df(workbook):
-    wb = openpyxl.load_workbook(workbook)
-    df = {
-    'ligands': [row[1].value for row in wb['All.Pairs']][1:], 
-    'receptors': [row[3].value for row in wb['All.Pairs']][1:]
-    }
-    lg_rg = pd.DataFrame(df)
-    return lg_rg
-
-
-
 if __name__ == '__main__':
-
-    # Get 2015 ligand receptor direct interactions dataframe from
-    # the spreadsheet
-    #lg_rg = process_df(LIGAND_RECEPTOR_SPREADSHEET)
 
     GOA = _load_goa_gaf(GO_ANNOTATIONS)
     # Read and extract cell surface proteins from CSPA DB
