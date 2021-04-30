@@ -54,7 +54,7 @@ process main_inputs {
     """
 }
 
-/*
+
 process small_molecule_search {
     cache 'lenient'
 
@@ -66,7 +66,7 @@ process small_molecule_search {
 
     script:
     """
-    python3 $workflow.projectDir/scripts/process_main_inputs.py --input $params.input \
+    python3 $workflow.projectDir/scripts/small_molecule_search.py --input $params.input \
     --output $params.output \
     --targets_by_drug targets_by_drug.pkl \
     --drug_bank_pkl $DRUG_BANK_PKL
@@ -79,7 +79,7 @@ process small_molecule_search {
 targets_by_drug.into {td1; td2; td3; td4}
 
 
-
+/*
 process cell_types{
     
     cache 'lenient'
