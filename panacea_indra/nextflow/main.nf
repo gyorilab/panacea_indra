@@ -28,13 +28,11 @@ process main_inputs {
   
     file GO_ANNOTATIONS from goa_human
     file DATA_SPREADSHEET from neuro_immune_data
-    file DRUG_BANK_PKL from drugbank_pkl
     file ION_CHANNELS from ion_channels
     file SURFACE_PROTEINS_WB from surface_proteins
     
 
     output:
-    file "targets_by_drug.pkl" into targets_by_drug
     file "all_enzymes.pkl" into all_enzymes
     file "full_ligand_set.pkl" into full_ligand_set
     file "receptor_genes_go.pkl" into receptor_genes_go
@@ -43,15 +41,43 @@ process main_inputs {
 
     script:
     """
-    python3 $workflow.projectDir/scripts/process_main_inputs.py $params.input $params.output\
-    targets_by_drug.pkl receptors_in_data.pkl all_enzymes.pkl full_ligand_set.pkl \
-    $GO_ANNOTATIONS $DATA_SPREADSHEET $DRUG_BANK_PKL $ION_CHANNELS $SURFACE_PROTEINS_WB \
-    receptor_genes_go.pkl
+    python3 $workflow.projectDir/scripts/process_main_inputs.py --input $params.input \
+    --output $params.output \
+    --receptors_in_data receptors_in_data.pkl \
+    --all_enzymes all_enzymes.pkl \
+    --full_ligand_set full_ligand_set.pkl \
+    --go_annotations $GO_ANNOTATIONS \
+    --data_spreadsheet $DATA_SPREADSHEET \
+    --ion_channels $ION_CHANNELS \
+    --surface_protein_wb $SURFACE_PROTEINS_WB \
+    --receptors_genes_go receptor_genes_go.pkl
+    """
+}
+
+/*
+process small_molecule_search {
+    cache 'lenient'
+
+    input:
+    file DRUG_BANK_PKL from drugbank_pkl
+
+    output:
+    file "targets_by_drug.pkl" into targets_by_drug
+
+    script:
+    """
+    python3 $workflow.projectDir/scripts/process_main_inputs.py --input $params.input \
+    --output $params.output \
+    --targets_by_drug targets_by_drug.pkl \
+    --drug_bank_pkl $DRUG_BANK_PKL
     """
 }
 
 
+
+
 targets_by_drug.into {td1; td2; td3; td4}
+
 
 
 process cell_types{
@@ -159,8 +185,6 @@ process get_small_mol_report{
     """
 }
 
-
-/*
 process get_enzyme_interactions{
     
     cache 'lenient'
@@ -178,7 +202,7 @@ process get_enzyme_interactions{
     $ALL_LIGAND_RECEPTOR_STATEMENTS
     """
 }
-*/
+
 
 
 
@@ -235,7 +259,7 @@ process create_digraph{
 }
 
 
-/*
+
 process downstream_analysis{
     
     cache 'lenient'

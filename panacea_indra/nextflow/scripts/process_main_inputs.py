@@ -5,6 +5,7 @@ import obonet
 import logging
 import datetime
 import openpyxl
+import argparse as ag
 import pandas as pd
 from pathlib import Path
 from indra.sources import tas
@@ -19,22 +20,31 @@ from indra_db.client.principal.curation import get_curations
 from indra.databases.hgnc_client import get_hgnc_from_mouse, get_hgnc_name
 
 
+PARSER = ag.ArgumentParser()
+PARSER.add_argument('--input')
+PARSER.add_argument('--output')
+PARSER.add_argument('--receptors_in_data')
+PARSER.add_argument('--all_enzymes')
+PARSER.add_argument('--full_ligand_set')
+PARSER.add_argument('--data_spreadsheet')
+PARSER.add_argument('--go_annotations')
+PARSER.add_argument('--ion_channels')
+PARSER.add_argument('--surface_protein_wb')
+PARSER.add_argument('--receptors_genes_go')
+PARSER = PARSER.parse_args()
+
 # Parse arguments
-INPUT = sys.argv[1]
-OUTPUT = sys.argv[2]
-TARGETS_BY_DRUG = sys.argv[3]
-RECEPTORS_IN_DATA = sys.argv[4]
-ALL_ENZYMES = sys.argv[5]
-FULL_LIGAND_SET = sys.argv[6]
+INPUT = PARSER.input
+OUTPUT = PARSER.output
+RECEPTORS_IN_DATA = PARSER.receptors_in_data
+ALL_ENZYMES = PARSER.all_enzymes
+FULL_LIGAND_SET = PARSER.full_ligand_set
+GO_ANNOTATIONS = PARSER.go_annotations
+DATA_SPREADSHEET = PARSER.data_spreadsheet
+ION_CHANNELS = PARSER.ion_channels
+SURFACE_PROTEINS_WB = PARSER.surface_protein_wb
+RECEPTOR_GENES_GO = PARSER.receptors_genes_go
 
-
-GO_ANNOTATIONS = sys.argv[7]
-DATA_SPREADSHEET = sys.argv[8]
-DRUG_BANK_PKL = sys.argv[9]
-ION_CHANNELS = sys.argv[10]
-SURFACE_PROTEINS_WB = sys.argv[11]
-RECEPTOR_GENES_GO = sys.argv[12]
-#LIGAND_RECEPTOR_SPREADSHEET = sys.argv[12]
 
 
 logger = logging.getLogger('receptor_ligand_interactions')
@@ -228,38 +238,6 @@ if __name__ == '__main__':
     receptor_genes_go |= ion_channels
 
 
-
-    # Fetch omnipath database biomolecular interactions and
-    # process them into INDRA statements
-    op = process_from_web()
-
-    ### Small molecule search
-
-    # Process TAS statements
-    tp = tas.process_from_web()
-
-    # Read drugbank database pickle
-    with open(DRUG_BANK_PKL, "rb") as fh:
-        dp = pickle.load(fh)
-
-    # Run preassembly on a list of statements
-    stmts = ac.run_preassembly(tp.statements + dp, return_toplevel=False,
-                               run_refinement=False)
-
-    # Filter the statements to a given statement type
-    stmts_inhibition = ac.filter_by_type(stmts, 'Inhibition')
-
-
-    targets_by_drug = defaultdict(set)
-
-    # Create a dictionary of Drugs and targets
-    for stmt in stmts_inhibition:
-        drug_grounding = stmt.subj.get_grounding(
-            ns_order=default_ns_order + ['CHEMBL', 'PUBCHEM', 'DRUGBANK',
-                                         'HMS-LINCS'])
-        targets_by_drug[(stmt.subj.name, drug_grounding)].add(stmt.obj.name)
-
-
     # Collect lists of receptors based on GO annotations and
     # by reading the data
     # Read list of neuro immune genes from the spread sheet
@@ -269,10 +247,6 @@ if __name__ == '__main__':
 
 
     all_enzymes = get_all_enzymes()
-
-    # Write pickle outputs
-    with open(TARGETS_BY_DRUG, 'wb') as fh:
-        pickle.dump(targets_by_drug, fh)
 
 
     with open(os.path.join(OUTPUT, RECEPTORS_IN_DATA), 'wb') as fh:
