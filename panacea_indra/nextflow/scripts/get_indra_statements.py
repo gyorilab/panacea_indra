@@ -114,7 +114,8 @@ def html_assembler(indra_stmts, fname):
     """Assemble INDRA statements into a HTML report"""
     html_assembler = HtmlAssembler(indra_stmts,
                                    db_rest_url='https://db.indra.bio')
-    assembled_html_report = html_assembler.make_model(no_redundancy=True)
+    assembled_html_report = html_assembler.make_model(grouping_level='statement',
+                                                      no_redundancy=True)
     html_assembler.save_model(fname)
     return assembled_html_report
 
