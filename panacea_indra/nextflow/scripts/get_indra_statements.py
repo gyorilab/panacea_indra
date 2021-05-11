@@ -273,7 +273,7 @@ if __name__ == '__main__':
                                    'indra_ligand_receptor_report.html'))
 
         # Store the cell type specific indra statements in a dictionary
-        stmts_by_cell_type[cell_type] = indra_op_filtered
+        stmts_by_cell_type[cell_type] = stmts_public
 
         # Filter statements to database only and store them
         # in a separate dictionary
