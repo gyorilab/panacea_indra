@@ -176,6 +176,7 @@ if __name__ == '__main__':
     
     stmts_by_cell_type = {}
     stmts_db_by_cell_type = {}
+    all_ligands_by_receptor = {}
     possible_db_drug_targets = set()
     all_ranked_lg_df = pd.DataFrame(columns=['Interaction statement',
                                          'logFC'])
@@ -227,8 +228,11 @@ if __name__ == '__main__':
 
         # get the union of all the statement hashes
         all_hashes = set.union(*hashes.values())
+
+
         # Download the statements by hashes
         stmts_by_hash = download_statements(all_hashes)
+        
         # get only the list of all the available statemtns
         indra_db_stmts = list(stmts_by_hash.values())
         # Filtering out the indirect INDRA statements
@@ -250,6 +254,9 @@ if __name__ == '__main__':
         indra_op_filtered = filter_complex_statements(indra_op_filtered,
                                                       ligands_in_data.values(),
                                                       receptors_in_data)
+
+        # Get rid of redundant/messy complexes that have more than 2 members
+        indra_op_filtered = [s for s in indra_op_filtered if len(s.agent_list()) <= 2]
 
         # We do this again because when removing complex members, we
         # end up with more duplicates
@@ -285,6 +292,8 @@ if __name__ == '__main__':
                                                       set(ligands_in_data.values()),
                                                       stmts_by_cell_type[cell_type])
 
+        all_ligands_by_receptor[cell_type] = ligands_by_receptor
+
         with open(cell_type+'_ligands_by_receptor.pkl', 'wb') as fh:
             pickle.dump(ligands_by_receptor, fh)
 
@@ -305,6 +314,24 @@ if __name__ == '__main__':
 
         count += 1
 
+
+
+    interactions = []
+    for cells in all_ligands_by_receptor:
+        for rcs, lgs in all_ligands_by_receptor[cells].items():
+            for lg in lgs:
+                interactions.append(
+                    {
+                        'partner_a': lg,
+                        'partner_b': rcs
+                    }
+                )
+    df = pd.DataFrame(interactions)
+    df.to_csv(os.path.join(OUTPUT, 'all_interactions.csv'), sep=",", index=0)
+    
+    with open('all_ligands_by_receptor.pkl', 'wb') as fh:
+        pickle.dump(all_ligands_by_receptor, fh)
+
     with open('stmts_by_cell_type.pkl', 'wb') as fh:
         pickle.dump(stmts_by_cell_type, fh)
 
@@ -316,6 +343,7 @@ if __name__ == '__main__':
 
     with open('possible_db_drug_targets.pkl', 'wb') as fh:
         pickle.dump(possible_db_drug_targets, fh)
+
 
         '''
         # Creating a dict of logFC as key and
