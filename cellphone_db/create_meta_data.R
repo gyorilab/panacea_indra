@@ -111,6 +111,16 @@ cat('BioMart:', '\n',
   'one to one mapping ->', nrow(hgnc_mart[!hgnc_mart$HGNC_SYMBOL %in% 
                                               hgnc_mart[duplicated(hgnc_mart$HGNC_SYMBOL), c(1)], ]))
 
+# Saving duplicated Genes to check for Ligands/Receptors
+duplicated_genes <- unique(hgnc_mart[duplicated(hgnc_mart$HGNC_SYMBOL), 1])
+
+# Read ligands and receptors list
+ligands <- read.csv('./data/ligands.txt', col.names = 'genes')
+receptors <- read.csv('./data/receptors.txt', col.names = 'genes')
+
+table(duplicated_genes %in% ligands | duplicated_genes %in% receptors)
+
+
 # Removing duplicated genes and only keeping
 # one -> one mapped genes
 hgnc_mart_filtered <- hgnc_mart[!hgnc_mart$HGNC_SYMBOL %in% 
