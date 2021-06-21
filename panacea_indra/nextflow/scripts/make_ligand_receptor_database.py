@@ -161,12 +161,7 @@ def download_statements(hashes):
 
 def get_genes_for_go_ids(go_ids):
     """Return genes that are annotated with a given go ID or its children."""
-    all_go_ids = set()
-    for go_id in go_ids:
-        children_go_ids = {ch[1] for ch in bio_ontology.get_children('GO', go_id)}
-        all_go_ids.add(go_id)
-        all_go_ids |= children_go_ids
-    df = goa[goa['GO_ID'].isin(all_go_ids)]
+    df = goa[goa['GO_ID'].isin(set(go_ids))]
     up_ids = sorted(list(set(df['DB_ID'])))
     gene_names = [uniprot_client.get_gene_name(up_id) for up_id in up_ids]
     gene_names = {g for g in gene_names if g}
@@ -231,15 +226,6 @@ def read_gene_list(infile, mode):
 
     except FileNotFoundError:
         sys.exit("Given file doesn't exist")
-
-
-def filter_nuclear_receptors(receptors_go, go_term):
-    # Filtering out the nuclear receptors from the receptor list
-    nuclear_receptors = get_genes_for_go_ids([go_term])
-    # Add any others that don't have the right annotation
-    nuclear_receptors |= {'NR2C2'}
-    filtered_receptors_go = receptors_go - nuclear_receptors
-    return filtered_receptors_go
 
 
 def filter_complex_statements(stmts, ligands, receptors):
@@ -456,216 +442,228 @@ def process_df(workbook):
     return lg_rg
 
 
+def expand_with_child_go_terms(terms):
+    all_terms = set()
+    for term in terms:
+        child_terms = bio_ontology.get_children('GO', term)
+        all_terms |= {c[1] for c in child_terms}
+    return all_terms
 
-wd = '/Users/sbunga/gitHub/panacea_indra/panacea_indra/nextflow'
-# Read and extract cell surface proteins from CSPA DB
-wb = openpyxl.load_workbook(SURFACE_PROTEINS_WB)
-surface_protein_set = set(row[4].value for row in wb['Sheet 1']
-                          if row[6].value == 'yes')
-logger.info('Got %d surface proteins from spreadsheet' %
-            len(surface_protein_set))
-ligand_terms = ['cytokine activity', 'hormone activity',
-                'growth factor activity']
-receptor_terms = ['signaling receptor activity']
 
-# Getting GO id's for ligands and receptors by using
-# GO terms
-ligand_go_ids = [bio_ontology.get_id_from_name('GO', term)[1]
-                 for term in ligand_terms]
-receptor_go_ids = [bio_ontology.get_id_from_name('GO', term)[1]
-                   for term in receptor_terms]
+if __name__ == '__main__':
+    wd = '/Users/sbunga/gitHub/panacea_indra/panacea_indra/nextflow'
+    # Read and extract cell surface proteins from CSPA DB
+    wb = openpyxl.load_workbook(SURFACE_PROTEINS_WB)
+    surface_protein_set = set(row[4].value for row in wb['Sheet 1']
+                              if row[6].value == 'yes')
+    logger.info('Got %d surface proteins from spreadsheet' %
+                len(surface_protein_set))
+    ligand_terms = ['cytokine activity', 'hormone activity',
+                    'growth factor activity']
+    receptor_terms = ['signaling receptor activity']
+
+    # Getting GO id's for ligands and receptors by using
+    # GO terms
+    ligand_go_ids = [bio_ontology.get_id_from_name('GO', term)[1]
+                     for term in ligand_terms]
+    ligand_go_ids = extend_with_child_go_terms(ligand_go_ids)
+    receptor_go_ids = [bio_ontology.get_id_from_name('GO', term)[1]
+                       for term in receptor_terms]
+    receptor_go_ids = extend_with_child_go_terms(receptor_go_ids)
+    receptor_go_ids = {r for r in receptor_go_ids if 'receptor' in
+                       bio_ontology.get_name('GO', r)} - \
+        # Filtering out the nuclear receptors from the receptor list
+        expand_with_child_go_terms(['GO:0004879'])
 
 # Converting GO id's to gene symbols
-ligand_genes_go = get_genes_for_go_ids(ligand_go_ids)
-receptor_genes_go = get_genes_for_go_ids(receptor_go_ids)
+    ligand_genes_go = get_genes_for_go_ids(ligand_go_ids)
+    receptor_genes_go = get_genes_for_go_ids(receptor_go_ids)
+    # Remove one more nuclear receptor
+    receptor_genes_go -= {'NR2C2'}
 #manual_ligands = {'THBS1'}
-manual_ligands = set()
+    manual_ligands = set()
 
 
 # remove all the receptors from the surface_protein_set
-full_ligand_set = \
-    (surface_protein_set - receptor_genes_go) | ligand_genes_go | \
-    manual_ligands
-
-# Filtering out the nuclear receptors from the receptor list
-receptor_genes_go = filter_nuclear_receptors(receptor_genes_go,
-                                             'GO:0004879')
+    full_ligand_set = \
+        (surface_protein_set - receptor_genes_go) | ligand_genes_go | \
+        manual_ligands
 
 
 # Add ION channels to the receptor list
-ion_channels = set()
-with open(ION_CHANNELS, 'r') as fh:
-    for line in fh:
-        ion_channels.add(line.strip())
-receptor_genes_go |= ion_channels
+    ion_channels = set()
+    with open(ION_CHANNELS, 'r') as fh:
+        for line in fh:
+            ion_channels.add(line.strip())
+    receptor_genes_go |= ion_channels
 
 
 # Collect lists of receptors based on GO annotations and
 # by reading the data
 # Read list of neuro immune genes from the spread sheet
-_, raw_receptor_genes = read_workbook(DATA_SPREADSHEET)
-receptor_genes = mgi_to_hgnc_name(raw_receptor_genes)
-receptors_in_data = receptor_genes & receptor_genes_go
+    _, raw_receptor_genes = read_workbook(DATA_SPREADSHEET)
+    receptor_genes = mgi_to_hgnc_name(raw_receptor_genes)
+    receptors_in_data = receptor_genes & receptor_genes_go
 
 
 # Fetch omnipath database biomolecular interactions and
 # process them into INDRA statements
-op = process_from_web()
-filtered_op_stmts = ac.filter_direct(op.statements)
+    op = process_from_web()
+    filtered_op_stmts = ac.filter_direct(op.statements)
 
 # Filter statements which are not ligands/receptors from 
 # OmniPath database
-op_filtered = filter_op_stmts(op.statements, full_ligand_set,
-                              receptors_in_data)
-op_filtered = ac.filter_direct(op_filtered)
+    op_filtered = filter_op_stmts(op.statements, full_ligand_set,
+                                  receptors_in_data)
+    op_filtered = ac.filter_direct(op_filtered)
 
 
-indra_op_filtered = ac.filter_by_curation(op_filtered,
-                                          curations=db_curations)
+    indra_op_filtered = ac.filter_by_curation(op_filtered,
+                                              curations=db_curations)
 
 # Filter complex statements
-indra_op_filtered = filter_complex_statements(indra_op_filtered,
-                                              full_ligand_set,
-                                              receptors_in_data)
+    indra_op_filtered = filter_complex_statements(indra_op_filtered,
+                                                  full_ligand_set,
+                                                  receptors_in_data)
 
-receptor_by_ligands = get_receptor_by_ligands(receptors_in_data, 
-                                              full_ligand_set, 
-                                              indra_op_filtered)
+    receptor_by_ligands = get_receptor_by_ligands(receptors_in_data, 
+                                                  full_ligand_set, 
+                                                  indra_op_filtered)
 # get interaction statements
-hashes_by_gene_pair = get_hashes_by_gene_pair(indra_df, full_ligand_set,
-                                              receptors_in_data)
+    hashes_by_gene_pair = get_hashes_by_gene_pair(indra_df, full_ligand_set,
+                                                  receptors_in_data)
 
 # get the union of all the statement hashes 
-all_hashes = set.union(*hashes_by_gene_pair.values())
+    all_hashes = set.union(*hashes_by_gene_pair.values())
 
 # Download the statements by hashes
-stmts_by_hash = download_statements(all_hashes)
+    stmts_by_hash = download_statements(all_hashes)
 
 # get only the list of all the available statements
-indra_db_stmts = list(stmts_by_hash.values())
+    indra_db_stmts = list(stmts_by_hash.values())
 
 
 # Filtering out the indirect INDRA statements
-indra_db_stmts = ac.filter_direct(indra_db_stmts)
+    indra_db_stmts = ac.filter_direct(indra_db_stmts)
 
 # Assemble the statements into HTML formatted report and save into a file
-indra_op_html_report = \
-    html_assembler(
-        indra_db_stmts,
-        fname=os.path.join(wd,
-                           'op_interactions.html'))
+    indra_op_html_report = \
+        html_assembler(
+            indra_db_stmts,
+            fname=os.path.join(wd,
+                               'op_interactions.html'))
 
 
-nature_interactions = process_df(os.path.join(INPUT, 'ncomms8866-s3.xlsx'))
+    nature_interactions = process_df(os.path.join(INPUT, 'ncomms8866-s3.xlsx'))
 
-custom_interactome = defaultdict(set)
-for r,c in nature_interactions.iterrows():
-    custom_interactome[(c[0])].add(c[1])
-    
-hashes = defaultdict(set)
-for a, b, hs in zip(indra_df.agA_name, 
-                    indra_df.agB_name,
-                    indra_df.stmt_hash):
-    if a in custom_interactome and b in custom_interactome[a]:
-        hashes[(a, b)].add(hs)
+    custom_interactome = defaultdict(set)
+    for r,c in nature_interactions.iterrows():
+        custom_interactome[(c[0])].add(c[1])
+        
+    hashes = defaultdict(set)
+    for a, b, hs in zip(indra_df.agA_name, 
+                        indra_df.agB_name,
+                        indra_df.stmt_hash):
+        if a in custom_interactome and b in custom_interactome[a]:
+            hashes[(a, b)].add(hs)
 
-      
+          
 
-up_hgnc = {v: k for k, v in um.uniprot_gene_name.items()
-           if k in um.uniprot_hgnc}
-
-
-dataframe = []
-count=0
-
-for r,c in nature_interactions.iterrows():
-    count+=1
-    if c[0] in up_hgnc and c[1] in up_hgnc:
-        dataframe.append(
-            {
-                'id_cp_interaction':'NATURE-'+str(count),
-                'partner_a': up_hgnc[c[0]],
-                'partner_b': up_hgnc[c[1]],
-                'source':'NATURE'
-            }
-        )
-
-df = pd.DataFrame(dataframe)
-df.to_csv(os.path.join(wd, 'output/nature_uniprot.csv'), 
-                 sep=",", index=0)
+    up_hgnc = {v: k for k, v in um.uniprot_gene_name.items()
+               if k in um.uniprot_hgnc}
 
 
+    dataframe = []
+    count=0
 
-nat_interactions = []
-for r,c in nature_interactions.iterrows():
-    nat_interactions.append(
-    {
-        'ligands': c[0],
-        'receptors': c[1],
-        'interactions': c[0]+'_'+c[1]
+    for r,c in nature_interactions.iterrows():
+        count+=1
+        if c[0] in up_hgnc and c[1] in up_hgnc:
+            dataframe.append(
+                {
+                    'id_cp_interaction':'NATURE-'+str(count),
+                    'partner_a': up_hgnc[c[0]],
+                    'partner_b': up_hgnc[c[1]],
+                    'source':'NATURE'
+                }
+            )
 
-    }
-)
-nature_df = pd.DataFrame(nat_interactions)
+    df = pd.DataFrame(dataframe)
+    df.to_csv(os.path.join(wd, 'output/nature_uniprot.csv'), 
+                     sep=",", index=0)
 
-op_interactions = []
-for receptors, ligands in receptor_by_ligands.items():
-    for lg in ligands:
-        op_interactions.append(
+
+
+    nat_interactions = []
+    for r,c in nature_interactions.iterrows():
+        nat_interactions.append(
         {
-            'ligands':lg,
-            'receptors': receptors,
-            'interactions': lg+'_'+receptors
+            'ligands': c[0],
+            'receptors': c[1],
+            'interactions': c[0]+'_'+c[1]
+
         }
     )
-op_df = pd.DataFrame(op_interactions)
+    nature_df = pd.DataFrame(nat_interactions)
 
-
-a = set(op_df.interactions)
-b = set(nature_df.interactions)
-unique_interactions = a|b
-
-print('total OP interactions:',len(a),'\n',
-      'total nature 2015 interactions:',len(b), '\n',
-     'total unique interactions:', len(unique_interactions))
-df = [{'partner_a':i.split('_')[0],
-      'partner_b':i.split('_')[1]} 
-      for i in unique_interactions]
-
-op_nature = pd.DataFrame(df)
-op_nature.to_csv(os.path.join(wd, 'output/op_nature_genes.csv'), 
-                 sep=",", index=0)
-
-
-
-
-dataframe = []
-count=0
-
-for r,c in op_nature.iterrows():
-    count+=1
-    if c[0] in up_hgnc and c[1] in up_hgnc:
-        dataframe.append(
+    op_interactions = []
+    for receptors, ligands in receptor_by_ligands.items():
+        for lg in ligands:
+            op_interactions.append(
             {
-                'id_cp_interaction':'Woolf-'+str(count),
-                'partner_a': up_hgnc[c[0]],
-                'partner_b': up_hgnc[c[1]],
-                'source':'INDRA'
+                'ligands':lg,
+                'receptors': receptors,
+                'interactions': lg+'_'+receptors
             }
         )
+    op_df = pd.DataFrame(op_interactions)
 
-df = pd.DataFrame(dataframe)
-df.to_csv(os.path.join(wd, 'output/op_nature_uniprot.csv'), 
-                 sep=",", index=0)
+
+    a = set(op_df.interactions)
+    b = set(nature_df.interactions)
+    unique_interactions = a|b
+
+    print('total OP interactions:',len(a),'\n',
+          'total nature 2015 interactions:',len(b), '\n',
+         'total unique interactions:', len(unique_interactions))
+    df = [{'partner_a':i.split('_')[0],
+          'partner_b':i.split('_')[1]} 
+          for i in unique_interactions]
+
+    op_nature = pd.DataFrame(df)
+    op_nature.to_csv(os.path.join(wd, 'output/op_nature_genes.csv'), 
+                     sep=",", index=0)
+
+
+
+
+    dataframe = []
+    count=0
+
+    for r,c in op_nature.iterrows():
+        count+=1
+        if c[0] in up_hgnc and c[1] in up_hgnc:
+            dataframe.append(
+                {
+                    'id_cp_interaction':'Woolf-'+str(count),
+                    'partner_a': up_hgnc[c[0]],
+                    'partner_b': up_hgnc[c[1]],
+                    'source':'INDRA'
+                }
+            )
+
+    df = pd.DataFrame(dataframe)
+    df.to_csv(os.path.join(wd, 'output/op_nature_uniprot.csv'), 
+                     sep=",", index=0)
 
 
 ######## Checking for OP specific and common interaction b/w Nature and OP
-common_op_nature_interaction = set(op_df.interactions) & set(nature_df.interactions)
-common_op_nature_interaction = pd.DataFrame([{'interactions':i} for i in common_op_nature_interaction])
-common_op_nature_interaction.to_csv(os.path.join(wd, 'output/common_op_nature_interaction.csv'), 
-                 sep=",", index=0)
+    common_op_nature_interaction = set(op_df.interactions) & set(nature_df.interactions)
+    common_op_nature_interaction = pd.DataFrame([{'interactions':i} for i in common_op_nature_interaction])
+    common_op_nature_interaction.to_csv(os.path.join(wd, 'output/common_op_nature_interaction.csv'), 
+                     sep=",", index=0)
 
-op_specific = set(op_df.interactions) - set(nature_df.interactions)
-op_specific = pd.DataFrame([{'interactions':i} for i in op_specific])
-op_specific.to_csv(os.path.join(wd, 'output/op_specific.csv'), 
-                 sep=",", index=0)
+    op_specific = set(op_df.interactions) - set(nature_df.interactions)
+    op_specific = pd.DataFrame([{'interactions':i} for i in op_specific])
+    op_specific.to_csv(os.path.join(wd, 'output/op_specific.csv'), 
+                     sep=",", index=0)
