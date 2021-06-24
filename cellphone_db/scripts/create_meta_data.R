@@ -3,6 +3,7 @@ library(dplyr)
 library(Seurat)
 library(ggplot2)
 library(proustr)
+library(stringr)
 library(pheatmap)
 library(tidyverse)
 library(hrbrthemes)
@@ -40,8 +41,12 @@ symbol2ensembl <-function(cts){
 setwd('~/gitHub/panacea_indra/cellphone_db/')
 # Read in Seurat objects
 incision <- readRDS('./input/data/incision_all.rds')
-inn <- NormalizeData(incision)
 healthy <- readRDS('./input/data/healthy_all.rds')
+zymo <- readRDS('./input/data/zymo_all.rds')
+saline <- readRDS('./input/data/saline_all.rds')
+
+immune_object <- list('zymo' = zymo,
+                      'saline' = saline)
 
 # Rename cell clusters  
 #immune_cells <- RenameIdents(immune_cells,  `2` = "Neutrophils",
@@ -56,7 +61,7 @@ healthy <- readRDS('./input/data/healthy_all.rds')
 
 
 # Read neuron RDS
-neuron_cells <- readRDS('./input/data/nucseq_interactome.rds')
+neuron_cells <- readRDS('./input/data/nucseq_norm.rds')
 # Remove samples with NA
 neuron_cells <- subset(neuron_cells, sample!='NA')
 
@@ -73,93 +78,95 @@ renamed_idents <- factor(active.ident_neuron$cell_types)
 names(renamed_idents) <- active.ident_neuron$cells
 neuron_cells@active.ident <- renamed_idents
 
+count = 0
+## Runnning loop to merge and save neuro and immune objects
+for (immune in immune_object) {
+  count = count+1
+  xname <- names(immune_object)[count]
+  # Combining immune incision cells and neuron cells
+  neuro_immune.combined <- merge(immune, y = neuron_cells, 
+                                 add.cell.ids = c(xname, "neurons"), 
+                                 project = paste0(xname,"_neuron"))
+  
 
-##
-# Combining immune incision cells and neuron cells
-neuro_immune.combined <- merge(incision, y = neuron_cells, 
-                               add.cell.ids = c("incision", "neurons"), 
-                               project = "incisio_neuron")
-neuro_immune.combined <- merge(healthy, neuron_cells,
-                               add.cell.ids = c('healthy', 'neurons'),
-                               project = 'healthy_neuron')
-
-# Write meta table of cells and cell type
-# Separated by tab-space
-meta_table <- data.frame('Cell' = names(neuro_immune.combined@active.ident),
-                         'cell_type' = unname(neuro_immune.combined@active.ident))
-write.table(meta_table, './input/neuro_healthy_meta_table.tsv', 
-            row.names = F, sep='\t', quote = F)
+  # Write meta table of cells and cell type
+  # Separated by tab-space
+  meta_table <- data.frame('Cell' = names(neuro_immune.combined@active.ident),
+                           'cell_type' = unname(neuro_immune.combined@active.ident))
+  write.table(meta_table, paste0('./input/neuro_',xname,'_meta_table.tsv'), 
+              row.names = F, sep='\t', quote = F)
 
 
-# Make a meta table for immune cells
-#immune_meta_table <- meta_table[which(meta_table$Cell ==
-#                                        str_extract(meta_table$Cell, 'incision.*')), ]
-#write.table(immune_meta_table, './input/immune_meta_table.tsv', row.names = F, 
-#          sep = '\t', quote=F)
+  # Make a meta table for immune cells
+  #immune_meta_table <- meta_table[which(meta_table$Cell ==
+  #                                        str_extract(meta_table$Cell, 'incision.*')), ]
+  #write.table(immune_meta_table, './input/immune_meta_table.tsv', row.names = F, 
+  #          sep = '\t', quote=F)
 
-# Read BioMart Mouse Human Orthologue table
-mart_table <- read.table('./input/mart_export.txt', sep='\t', header = T)
-colnames(mart_table) <- c('HGNC_ID', 'HGNC_SYMBOL', 'MOUSE_SYMBOL', 'MOUSE_ID')
-# Removing rows with no value
-mart_table <- mart_table[Reduce(`&`, lapply(mart_table, function(x) !x=="")),]
+  # Read BioMart Mouse Human Orthologue table
+  mart_table <- read.table('./input/mart_export.txt', sep='\t', header = T)
+  colnames(mart_table) <- c('HGNC_ID', 'HGNC_SYMBOL', 'MOUSE_SYMBOL', 'MOUSE_ID')
+  # Removing rows with no value
+  mart_table <- mart_table[Reduce(`&`, lapply(mart_table, function(x) !x=="")),]
 
-# Extracting counts from neuro immune object
-neuro_immune_counts <- as.data.frame(neuro_immune.combined@assays$RNA@counts)
+  # Extracting counts from neuro immune object
+  neuro_immune_counts <- as.data.frame(neuro_immune.combined@assays$RNA@data)
 
-# Converting counts to float values as per to 
-# cellphoneDB format
-for (coln in 1:ncol(neuro_immune_counts)) {
-  neuro_immune_counts[,coln] <- noquote(sprintf("%.2f", 
-                                                  neuro_immune_counts[,coln]))
-} 
+  # Converting counts to float values as per to 
+  # cellphoneDB format
+  #for (coln in 1:ncol(neuro_immune_counts)) {
+  #  neuro_immune_counts[,coln] <- noquote(sprintf("%.2f", 
+  #                                                  neuro_immune_counts[,coln]))
+  #} 
 
 # Filtering the genes in neuro immune counts to HGNC eq using INDRA
 # modules
 #indra_hgnc_genes <- unlist(fastGene::convert_symbols(rownames(neuro_immune_counts)))
 
-# Filtering the genes in neuro immune counts to the genes in BioMart DB
-neuro_immune_filtered <- neuro_immune_counts[rownames(neuro_immune_counts) %in% 
-                                             mart_table$MOUSE_SYMBOL, ]
-neuro_immune_filtered$MOUSE_SYMBOL <- rownames(neuro_immune_filtered)
+  # Filtering the genes in neuro immune counts to the genes in BioMart DB
+  neuro_immune_filtered <- neuro_immune_counts[rownames(neuro_immune_counts) %in% 
+                                              mart_table$MOUSE_SYMBOL, ]
+  neuro_immune_filtered$MOUSE_SYMBOL <- rownames(neuro_immune_filtered)
 
-hgnc_mart <- merge(neuro_immune_filtered, mart_table[,c(2,3)], 
-                   by='MOUSE_SYMBOL')
-hgnc_mart <- hgnc_mart[, c(ncol(hgnc_mart),1:ncol(hgnc_mart)-1)]
+  hgnc_mart <- merge(neuro_immune_filtered, mart_table[,c(2,3)], 
+                     by='MOUSE_SYMBOL')
+  hgnc_mart <- hgnc_mart[, c(ncol(hgnc_mart),1:ncol(hgnc_mart)-1)]
 
-cat('BioMart:', '\n',
-  'genes mapped to HGNC ->',nrow(hgnc_mart), '\n',
-  'one to one mapping ->', nrow(hgnc_mart[!hgnc_mart$HGNC_SYMBOL %in% 
-                                            hgnc_mart[duplicated(hgnc_mart$HGNC_SYMBOL), c(1)], ])
-  )
+  cat('BioMart:', '\n',
+    'genes mapped to HGNC ->',nrow(hgnc_mart), '\n',
+    'one to one mapping ->', nrow(hgnc_mart[!hgnc_mart$HGNC_SYMBOL %in% 
+                                              hgnc_mart[duplicated(hgnc_mart$HGNC_SYMBOL), c(1)], ])
+    )
 
-# Saving duplicated Genes to check for Ligands/Receptors
-#duplicated_genes <- unique(hgnc_mart[duplicated(hgnc_mart$HGNC_SYMBOL), 1])
+  # Saving duplicated Genes to check for Ligands/Receptors
+  #duplicated_genes <- unique(hgnc_mart[duplicated(hgnc_mart$HGNC_SYMBOL), 1])
+  
+  # Read ligands and receptors list
+  #ligands <- read.csv('./data/ligands.txt', col.names = 'genes')
+  #receptors <- read.csv('./data/receptors.txt', col.names = 'genes')
 
-# Read ligands and receptors list
-#ligands <- read.csv('./data/ligands.txt', col.names = 'genes')
-#receptors <- read.csv('./data/receptors.txt', col.names = 'genes')
-
-#table(duplicated_genes %in% ligands | duplicated_genes %in% receptors)
+  #table(duplicated_genes %in% ligands | duplicated_genes %in% receptors)
 
 
-# Removing duplicated genes and only keeping
-# one -> one mapped genes
-hgnc_mart_filtered <- hgnc_mart[!hgnc_mart$HGNC_SYMBOL %in% 
-                                hgnc_mart[duplicated(hgnc_mart$HGNC_SYMBOL), c(1)], ]
+  # Removing duplicated genes and only keeping
+  # one -> one mapped genes
+  hgnc_mart_filtered <- hgnc_mart[!hgnc_mart$HGNC_SYMBOL %in% 
+                                  hgnc_mart[duplicated(hgnc_mart$HGNC_SYMBOL), c(1)], ]
 
-rownames(hgnc_mart_filtered) <- hgnc_mart_filtered$HGNC_SYMBOL
-cnum <- which(colnames(hgnc_mart_filtered) == 'HGNC_SYMBOL')
-colnames(hgnc_mart_filtered)[cnum] <- 'Gene'
+  rownames(hgnc_mart_filtered) <- hgnc_mart_filtered$HGNC_SYMBOL
+  cnum <- which(colnames(hgnc_mart_filtered) == 'HGNC_SYMBOL')
+  colnames(hgnc_mart_filtered)[cnum] <- 'Gene'
 
-hgnc_mart_filtered$MOUSE_SYMBOL <- NULL
+  hgnc_mart_filtered$MOUSE_SYMBOL <- NULL
 
-# Convert HGNC symbol to ENSMBL
-hgnc_mart_ensmbl <- symbol2ensembl(as.matrix(hgnc_mart_filtered))
-hgnc_mart_ensmbl[,1] <- rownames(hgnc_mart_ensmbl)
+  # Convert HGNC symbol to ENSMBL
+  hgnc_mart_ensmbl <- symbol2ensembl(as.matrix(hgnc_mart_filtered))
+  hgnc_mart_ensmbl[,1] <- rownames(hgnc_mart_ensmbl)
 
-# Save counts in cellphoneDB format
-write.table(hgnc_mart_ensmbl, './input/neuro_healthy_counts.txt',
-            col.names = T, row.names = F, quote = F, sep='\t')
+  # Save counts in cellphoneDB format
+  write.table(hgnc_mart_ensmbl, paste0('./input/neuro_',xname,'_counts.txt'),
+              col.names = T, row.names = F, quote = F, sep='\t')
+}
 
 # Save only Immune counts in cellponeDB format
 #immune_hgnc_mart_ensmbl <- 
@@ -306,31 +313,12 @@ write.table(all_count, './abT_interactions.tsv', sep='\t', row.names = F)
 
 
 
-###########
-# Code to make custom interactions file 
-# for drawing heatmaps
-###########
-meta = read.csv(file = './input/immune_meta_table.tsv', comment.char = '', sep='\t')
-all_intr = read.table('./out/celldb_user_custom/pvalues.txt', header=T, stringsAsFactors = F, 
-                      sep='\t', comment.char = '', check.names = F)
-all_intr <- subset(all_intr, receptor_a == 'False' & receptor_b=='True')
-
-intr_pairs = all_intr$interacting_pair
-all_intr = all_intr[,-c(1:11)]
-split_sep = '\\|'
-join_sep = '|'
-
-pairs1_all = unique(meta[,2])
 
 
-# Creating pairs
-pairs1 = c()
-for (i in 1:length(pairs1_all))
-  for (j in 1:length(pairs1_all))
-    pairs1 = c(pairs1,paste(pairs1_all[i],pairs1_all[j],sep=join_sep))
+
 
 # Get only interactions to abT
-abT_intr <- na.omit(str_extract(pairs1, '.*\\|ab T'))
+abT_intr <- na.omit(str_extract(pairs1, '.*\\|ab T cells'))
 
 all_count = matrix(ncol=4)
 colnames(all_count) = c('SOURCE','TARGET','Count', 'Pairs')
