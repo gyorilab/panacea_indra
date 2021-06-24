@@ -55,8 +55,8 @@ db_curations = get_curations()
 
 #__file__ = "/Users/sbunga/gitHub/panacea_indra/panacea_indra/nextflow/scripts/interactome_notebook.ipynb"
 HERE = os.path.dirname(os.path.abspath(__file__))
-INPUT = os.path.join(HERE, os.pardir, 'input')
-OUTPUT = os.path.join(HERE, os.pardir, 'output')
+INPUT = os.path.join(HERE, os.pardir, os.pardir, os.pardir, 'input')
+OUTPUT = os.path.join(HERE, os.pardir, os.pardir, os.pardir, 'output')
 INDRA_DB_PKL = os.path.join(INPUT, 'db_dump_df.pkl')
 DATA_SPREADSHEET = os.path.join(INPUT, 'Neuroimmune gene list .xlsx')
 LIGAND_RECEPTOR_SPREADSHEET = os.path.join(INPUT, 'ncomms8866-s3.xlsx')
@@ -427,8 +427,8 @@ def create_interaction_digraph(ligand_receptors,
     ag = networkx.nx_agraph.to_agraph(G)
     fname = os.path.join(OUTPUT, fname + "interactions_digraph.pdf")
     ag.draw(fname, prog='dot')
-    
-    
+
+
 def process_df(workbook):
     wb = openpyxl.load_workbook(workbook)
     df = {
@@ -440,7 +440,7 @@ def process_df(workbook):
 
 
 def expand_with_child_go_terms(terms):
-    all_terms = set()
+    all_terms = set(terms)
     for term in terms:
         child_terms = bio_ontology.get_children('GO', term)
         all_terms |= {c[1] for c in child_terms}
@@ -457,7 +457,7 @@ def get_receptors():
                        bio_ontology.get_name('GO', r)} - \
                       expand_with_child_go_terms(['GO:0004879'])
     receptor_genes_go = get_genes_for_go_ids(receptor_go_ids)
-    receptor_genes_go -= {'NR2C2'}
+    receptor_genes_go -= {'NR2C2', 'EGF'}
     # Add ION channels to the receptor list
     ion_channels = set()
     with open(ION_CHANNELS, 'r') as fh:
@@ -475,7 +475,8 @@ def get_ligands():
     logger.info('Got %d surface proteins from spreadsheet' %
                 len(surface_protein_set))
     ligand_terms = ['cytokine activity', 'hormone activity',
-                    'growth factor activity']
+                    'growth factor activity',
+                    'extracellular matrix structural constituent']
     # Getting GO id's for ligands and receptors by using
     # GO terms
     ligand_go_ids = [bio_ontology.get_id_from_name('GO', term)[1]
