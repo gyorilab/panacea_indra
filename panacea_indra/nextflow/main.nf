@@ -79,7 +79,7 @@ process small_molecule_search {
 targets_by_drug.into {td1; td2; td3; td4}
 
 
-/*
+
 process cell_types{
     
     cache 'lenient'
@@ -130,6 +130,7 @@ process get_cell_type_indra_statements {
     file 'possible_db_drug_targets.pkl' into possible_db_drug_targets
     file 'stmts_db_by_cell_type.pkl' into stmts_db_by_cell_type
     file 'stmts_by_cell_type.pkl' into stmts_by_cell_type
+    file 'all_ligands_by_receptor.pkl' into all_ligands_by_receptor
     //file 'all_ligand_receptor_statements.pkl' into all_ligand_receptor_statements
     file '*_ligands_by_receptor.pkl' into ligands_by_receptor
     file '*_ligands_by_receptor_db.pkl' into ligands_by_receptor_db
@@ -142,7 +143,7 @@ process get_cell_type_indra_statements {
 }
 
 
-
+/*
 stmts_db_by_cell_type.into {stmt_db_cell_type_1; stmt_db_cell_type_2; stmt_db_cell_type_3;}
 
 

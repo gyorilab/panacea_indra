@@ -233,19 +233,18 @@ def read_gene_list(infile, mode):
 
 
 def filter_complex_statements(stmts, ligands, receptors):
+    filtered_stmts = []
     for stmt in stmts:
         if isinstance(stmt, Complex):
-            # Statement updated by reference here
-            _filter_complex(stmt, ligands, receptors)
-    return stmts
+            if len(stmt.members) <=2:
+                if (any(a.name in ligands for a in stmt.members) 
+                    and any(a.name in receptors for a in stmt.members)):
+                    filtered_stmts.append(stmt)
+        else:
+            filtered_stmts.append(stmt)
+            
+    return filtered_stmts
 
-
-def _filter_complex(stmt, lg, rg):
-    """Filter out the genes from Complex statements which
-    are not present in the given ligand/receptor list"""
-    stmt.members = [agent for agent in stmt.members
-                    if agent.name in lg or agent.name in rg]
-    return stmt
 
 
 def filter_op_stmts(op_stmts, lg, rg):
@@ -573,6 +572,7 @@ def merge_interactions(interactions, genes_file, uniprot_file):
                           sep=",", index=0)
     
 if __name__ == '__main__':
+    
     wd = '/Users/sbunga/gitHub/panacea_indra/panacea_indra/nextflow'
     receptor_genes_go = get_receptors()
     # remove all the receptors from the surface_protein_set
@@ -607,6 +607,7 @@ if __name__ == '__main__':
     op_filtered = ac.filter_by_curation(op_filtered,
                                         curations=db_curations)
     
+    
     # Merge omnipath/INDRA statements and run assembly
     indra_op_stmts = ac.run_preassembly(indra_db_stmts + op_filtered,
                                         run_refinement=False)
@@ -628,6 +629,19 @@ if __name__ == '__main__':
     op_filtered = filter_complex_statements(op_filtered,
                                             full_ligand_set,
                                             receptor_genes_go)
+    op_filtered = ac.run_preassembly(op_filtered, run_refinement=False)
+    
+    # Filtering indra_db stmts
+    indra_db_stmts = ac.filter_by_curation(indra_db_stmts,
+                                           curations=db_curations)
+    
+    indra_db_stmts = filter_complex_statements(indra_db_stmts,
+                                               full_ligand_set,
+                                               receptor_genes_go)
+    
+    indra_db_stmts = ac.run_preassembly(indra_db_stmts, run_refinement=False)
+    
+    
 
     # get ligands by receptor for OP
     op_receptor_by_ligands = get_receptor_by_ligands(receptor_genes_go, 
@@ -651,6 +665,11 @@ if __name__ == '__main__':
             html_assembler(
                 indra_op_filtered,
                 fname=os.path.join(wd, 'indra_op_interactions.html'))
+    
+    indra_op_html_report = \
+            html_assembler(
+                indra_db_stmts,
+                fname=os.path.join(wd, 'indra_db_interactions.html'))
     
     
     

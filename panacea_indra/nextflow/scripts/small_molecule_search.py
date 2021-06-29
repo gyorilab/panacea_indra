@@ -9,6 +9,10 @@ import indra.tools.assemble_corpus as ac
 from indra.statements.agent import default_ns_order
 from indra.sources.omnipath import process_from_web
 
+'''
+---Small Molecule Search---
+
+'''
 
 
 if __name__ == '__main__':
@@ -61,7 +65,7 @@ if __name__ == '__main__':
             ns_order=default_ns_order + ['CHEMBL', 'PUBCHEM', 'DRUGBANK',
                                          'HMS-LINCS'])
         targets_by_drug[(stmt.subj.name, drug_grounding)].add(stmt.obj.name)
-    
+
     # Write pickle outputs
     with open(TARGETS_BY_DRUG, 'wb') as fh:
         pickle.dump(targets_by_drug, fh)
