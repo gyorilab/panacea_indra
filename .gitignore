@@ -1,0 +1,10 @@
+.nextflow*
+work
+functions.py
+__pycache__*
+*ipynb*
+.DS_Store*
+.ipynb_checkpoints*
+input
+output
+*rds*
