@@ -8,26 +8,26 @@ library(RColorBrewer)
 
 # Functions
 # Chart
-draw_venn <- function(set_list, file_loc, title){
+draw_venn <- function(set_list, file_loc, title, cat_names, mycol, cat_dist){
   
   venn.diagram(
     x = set_list,
-    category.names = c("Human Primary" , "iPSC " , "Mouse Primary"),
+    category.names = cat_names,
     filename = paste0(file_loc),
     output=T,
     main = title,
     
     # Output features
     imagetype="tiff" ,
-    height = 1000 , 
-    width = 1000 , 
+    height = 1200, 
+    width = 1500 , 
     resolution = 250,
     compression = "lzw",
     
     # Circles
     lwd = 2,
     lty = 'blank',
-    fill = myCol,
+    fill = mycol,
     
     # Numbers
     cex = .6,
@@ -37,9 +37,9 @@ draw_venn <- function(set_list, file_loc, title){
     # Set names
     cat.cex = 0.5,
     cat.fontface = "bold",
-    cat.default.pos = "outer",
-    cat.pos = c(0, 1, 2),
-    #cat.dist = c(0.055, 0.055, 0.085),
+    #cat.default.pos = "inner",
+    cat.pos = c(0, 1),
+    cat.dist = cat_dist,
     cat.fontfamily = "sans",
     #rotation = 1
   )
@@ -48,30 +48,114 @@ draw_venn <- function(set_list, file_loc, title){
 }
 
 # Read the datasets
-setwd("~/PycharmProjects/INDRA/Panacea/")
-ALL_HP <- readxl::read_xlsx("Data/ALL HP (human primary) selective.xlsx")
-ALL_HP <- ALL_HP[!is.na(ALL_HP$`Type(s)`), ]
-ALL_ID <- readxl::read_xlsx("Data/ALL ID (iPSC derived) selective.xlsx")
-ALL_ID <- ALL_ID[!is.na(ALL_ID$`Type(s)`), ]
-ALL_MP <- readxl::read_xlsx("Data/ALL MP (mouse primary) selective.xlsx")
-ALL_MP <- ALL_MP[!is.na(ALL_MP$`Type(s)`), ]
+setwd("~/gitHub/panacea_indra/other/draw_venn/")
+list_1 <- readxl::read_xlsx("Data/list_060121/List1 CommongenesRayDRGvsRayBrainSCHeart.xlsx",
+                            col_names = F)
+list_1 <- list_1[!is.na(list_1$...8), ]
+
+list_2 <- readxl::read_xls("Data/list_060121/List2 CommongenesOurhDRGvsRayBrainSCHeart.xls",
+                            col_names = F)
+list_2 <- list_2[!is.na(list_2$...4), ]
+
+list_3 <- readxl::read_xlsx("Data/list_060121/List3 Commongenes(1stexpt)mDRGvs(2ndexpt)mDRG,BrainSCHeart.xlsx",
+                            col_names = F)
+list_3 <- list_3[!is.na(list_3$...9), ]
+
+list_4 <- readxl::read_xlsx("Data/list_060121/List4 CommongenesNoci4wvsCorticalMotorCardio.xlsx",
+                            col_names = F)
+list_4 <- list_4[!is.na(list_4$...7), ]
+
+list_5 <- readxl::read_xlsx("Data/list_060121/List5 CommongenesNoci8wvsCorticalMotorCardio.xlsx",
+                            col_names = F)
+list_5 <- list_5[!is.na(list_5$...7), ]
+
+
 # Prepare a palette of 3 colors with R colorbrewer:
-myCol <- brewer.pal(3, "Pastel2")
+myCol <- brewer.pal(5, "Pastel2")
 
 # Creating generalized sets
-set_ALL_HP <- na.omit(ALL_HP$Symbol)
-set_ALL_ID <- na.omit(ALL_ID$Symbol)
-set_ALL_MP <- na.omit(ALL_MP$Symbol)
+set_list_1 <- list_1[,c(1,8)]
+set_list_2 <- list_2[,c(1,4)]
+set_list_3 <- list_3[,c(1,9)]
+set_list_4 <- list_4[,c(1,7)]
+set_list_5 <- list_5[,c(1,7)]
 
+
+
+# Comparison 1 (1 vs 3 vs 4)
+type <- 'all_genes'
+cat_dist <- rep(0.052,5)
+dir.create(paste0('./venn_diagrams/', type),
+           showWarnings = F, 
+           recursive = T)
+
+loc = paste0('./venn_diagrams/', type, '/1vs3vs4.tiff')
+all_genes <- list(set_list_1$...1, set_list_3$...1, set_list_4$...1)
+cat_names <- c('CommongenesRayDRGvsRayBrainSCHeart',
+               'Commongenes(1stexpt)mDRGvs(2ndexpt)mDRG,BrainSCHeart',
+               'CommongenesNoci4wvsCorticalMotorCardio'
+               )
+draw_venn(all_genes, loc, type, cat_names, myCol[1:3], cat_dist[1:3])
+
+# Comparison 2 (1 vs 3 vs 5)
+loc = paste0('./venn_diagrams/', type, '/1vs3vs5.tiff')
+all_genes <- list(set_list_1$...1, set_list_3$...1, set_list_5$...1)
+cat_names <- c('CommongenesRayDRGvsRayBrainSCHeart',
+               'Commongenes(1stexpt)mDRGvs(2ndexpt)mDRG,BrainSCHeart',
+               'CommongenesNoci8wvsCorticalMotorCardio'
+)
+draw_venn(all_genes, loc, type, cat_names, myCol[1:3], cat_dist[1:3])
+
+
+
+# Comparison 2 (2 vs 3 vs 4)
+loc = paste0('./venn_diagrams/', type, '/2vs3vs4.tiff')
+all_genes <- list(set_list_2$...1, set_list_3$...1, set_list_4$...1)
+cat_names <- c('CommongenesOurhDRGvsRayBrainSCHeart',
+               'Commongenes(1stexpt)mDRGvs(2ndexpt)mDRG,BrainSCHeart',
+               'CommongenesNoci4wvsCorticalMotorCardio')
+draw_venn(all_genes, loc, type, cat_names, myCol[1:3], cat_dist[1:3])
+
+
+# Comparison 2 (2 vs 3 vs 5)
+loc = paste0('./venn_diagrams/', type, '/2vs3vs5.tiff')
+all_genes <- list(set_list_2$...1, set_list_3$...1, set_list_5$...1)
+cat_names <- c('CommongenesOurhDRGvsRayBrainSCHeart',
+               'Commongenes(1stexpt)mDRGvs(2ndexpt)mDRG,BrainSCHeart',
+               'CommongenesNoci8wvsCorticalMotorCardio')
+draw_venn(all_genes, loc, type, cat_names, myCol[1:3], cat_dist[1:3])
+
+
+# Comparison 2 (1 vs 2)
+loc = paste0('./venn_diagrams/', type, '/1vs2.tiff')
+all_genes <- list(set_list_1$...1, set_list_2$...1)
+cat_names <- c('CommongenesRayDRGvsRayBrainSCHeart',
+               'CommongenesOurhDRGvsRayBrainSCHeart')
+
+draw_venn(all_genes, loc, type, cat_names, myCol[1:2], cat_dist[1:2])
+
+
+# Comparison 2 (4 vs 5)
+loc = paste0('./venn_diagrams/', type, '/4vs5.tiff')
+all_genes <- list(set_list_4$...1, set_list_5$...1)
+cat_names <- c('CommongenesNoci4wvsCorticalMotorCardio',
+               'CommongenesNoci8wvsCorticalMotorCardio')
+
+draw_venn(all_genes, loc, type, cat_names, myCol[1:2], cat_dist[1:2])
 
 all_datasets <- list(
-  'Human Primary' = ALL_HP,
-  'iPSC' = ALL_ID,
-  'Mouse Primary' = ALL_MP
+  'CommongenesRayDRGvsRayBrainSCHeart' = set_list_1,
+  'CommongenesOurhDRGvsRayBrainSCHeart' = set_list_2,
+  'Commongenes(1stexpt)mDRGvs(2ndexpt)mDRG,BrainSCHeart' = set_list_3,
+  'CommongenesNoci4wvsCorticalMotorCardio' = set_list_4,
+  'CommongenesNoci8wvsCorticalMotorCardio' = set_list_5
 )
 
 # Take a list of all the available cell types
-all_types <- names(table(ALL_HP$`Type(s)`))
+#all_types <- Reduce(intersect, all_datasets)
+al_types <- c("other", "transcription regulator", "transporter", "enzyme",
+              "transmembrane receptor", "ion channel", 
+              "G-protein coupled receptor", "kinase", "phosphatase" )
 
 for(type in all_types){
   count = 1
@@ -79,8 +163,8 @@ for(type in all_types){
   for(dataset in all_datasets){
     markers = c()
     for(s in 1:nrow(dataset)){
-      if(dataset[s,5]==type){
-        markers <- c(markers, dataset$Symbol[s])
+      if(dataset[s, 2]==type){
+        markers <- c(markers, dataset[s,1])
       }
     }
 
