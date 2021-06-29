@@ -7,7 +7,7 @@ library(OmnipathR)
 # Change the working directory to were you 
 # cloned the repository on your machine
 #/!\ /!\ /!\ /!\ /!\ /!\ /!\
-setwd("~/gitHub/panacea_indra/other/cosmos/")
+setwd("~/gitHub/panacea_indra/proteomics/cosmos/")
 #/!\ /!\ /!\ /!\ /!\ /!\ /!\
 
 source("./scripts/viper_functions.R")
