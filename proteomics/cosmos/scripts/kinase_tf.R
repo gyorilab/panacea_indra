@@ -16,7 +16,7 @@ source("./scripts/viper_functions.R")
 
 #import the data
 phospho_differential_analysis <- 
-  read.csv("./Data/Proteomics/panacea_phospho_human_mapped.csv")
+  read.csv("./Data/panacea_phospho_human_mapped.csv")
 
 
 #format it properly
