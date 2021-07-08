@@ -1,8 +1,8 @@
 #!/usr/bin/env nextflow
 
-params.input = "/Users/sbunga/PycharmProjects/INDRA/ligandReceptorInteractome/input/"
+params.input = "/Users/sbunga/gitHub/panacea_indra/panacea_indra/nextflow/input/"
 params.output = "/Users/sbunga/gitHub/panacea_indra/panacea_indra/nextflow/output/"
-params.pkl = "/Users/sbunga/gitHub/panacea_indra/panacea_indra/nextflow/output/pkl"
+
 
 
 goa_human = Channel.fromPath( "$params.input/goa_human.gaf" )
@@ -20,6 +20,23 @@ Human_Pain_Genes_DB = Channel.fromPath( "$params.input/Human_Pain_Genes_DB.tsv" 
 ligand_receptor_spreadsheet = Channel.fromPath( "$params.input/ncomms8866-s3.xlsx")
 
 
+process create_cellphonedb_indra_op_database{
+    
+    cache 'lenient'
+
+    input:
+
+    output:
+    
+    script:
+    """
+    python3 $workflow.projectDir/scripts/create_cellphonedb_database.py
+    """
+}
+
+
+
+/*
 process main_inputs {
     
     cache 'lenient'
@@ -53,6 +70,7 @@ process main_inputs {
     --receptors_genes_go receptor_genes_go.pkl
     """
 }
+
 
 
 process small_molecule_search {
@@ -143,7 +161,7 @@ process get_cell_type_indra_statements {
 }
 
 
-/*
+
 stmts_db_by_cell_type.into {stmt_db_cell_type_1; stmt_db_cell_type_2; stmt_db_cell_type_3;}
 
 
