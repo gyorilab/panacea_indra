@@ -33,10 +33,29 @@ phospho_filtered$X <- NULL
 phospho_filtered_c <- data.frame(row.names = rownames(phospho_filtered),
                                'CFA_fc' = phospho_filtered[,which(colnames(phospho_filtered) == "CFA_fc")]
                                )
+
+# import indra sif dump
+#indra_sif <- read.csv('./output/indra_sif.csv')
+#indra_sif_ksn <- indra_sif[indra_sif$stmt_type %in%
+#                             c("Dephosphorylation", "Phosphorylation"),]
+#indra_sif_ksn <- indra_sif_ksn[-which(indra_sif_ksn$residue == ''), ]
+
+indra_phospho_df <- read.csv('./output/indra_phospho_df.csv')
+indra_phospho_df <- indra_phospho_df %>% dplyr::select('agA_id', 'agA_name',
+                                                       'agB_id', 'agB_name',
+                                                       'residue', 'position', 'stmt_type')
+indra_phospho_df$agB_name <- paste(indra_phospho_df$agB_name,
+                                   indra_phospho_df$residue, sep='_')
+indra_phospho_df$agB_name <- paste(indra_phospho_df$agB_name,
+                                   indra_phospho_df$position, sep='')
+indra_phospho_df$sign <- ifelse(indra_phospho_df$stmt_type == "Phosphorylation", 1, -1)
+indra_phospho_df <- indra_phospho_df %>% select('agB_name', 'agA_name', 'sign')
+
+
 #import KSN from omnipath
 omnipath_ptm <- get_signed_ptms()
 omnipath_ptm <- omnipath_ptm[omnipath_ptm$modification %in% 
-                               c("dephosphorylation","phosphorylation"),]
+                               c("dephosphorylation","phosphorylation"), ]
 KSN <- omnipath_ptm[,c(4,3)]
 KSN$substrate_genesymbol <- paste(KSN$substrate_genesymbol,omnipath_ptm$residue_type, sep ="_")
 KSN$substrate_genesymbol <- paste(KSN$substrate_genesymbol,omnipath_ptm$residue_offset, sep = "")
@@ -45,11 +64,14 @@ KSN$sign <- ifelse(omnipath_ptm$modification == "phosphorylation", 1, -1)
 #Format KSN
 KSN_viper <- df_to_viper_regulon(KSN)
 
+#Format indra sif
+indra_phospho_ksn <- df_to_viper_regulon(indra_phospho_df)
+
 #run viper to get the TF activities from the phosphoproteomic data
 #You can also run that on wour normalised intesity matrix of phosphosites directly,
 #as long as it is formatted as a dataframe of similar format as here
 #User is strongly encouraged to check the viper publication (PMID: 27322546) for more info on the process
-kin_activity <- as.data.frame(viper(eset = phospho_filtered_c, regulon = KSN_viper, 
+kin_activity <- as.data.frame(viper(eset = phospho_filtered_c, regulon = indra_phospho_ksn, 
                       minsize = 5, adaptive.size = F, eset.filter = F))
 kin_activity$ID <- row.names(kin_activity)
 
