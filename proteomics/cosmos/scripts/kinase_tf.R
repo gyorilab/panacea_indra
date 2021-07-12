@@ -78,7 +78,12 @@ kin_activity$ID <- row.names(kin_activity)
 kin_activity <- kin_activity[,c(2,1)]
 names(kin_activity) <- c("ID","NES")
 dir.create('../panacea_indra/other/cosmos/input/', showWarnings = F)
-write.csv(kin_activity,'./dorothea_output/CFA_kin_activity.csv',row.names = F)
+
+kin_activity$NES_abs <- abs(kin_activity$NES)
+kin_activity$NES <- kin_activity$NES_abs[which(kin_activity$NES < 0)]*(-1)
+kin_activity$NES_abs <- NULL
+kin_activity <- kin_activity %>% arrange(desc(kin_activity$NES))
+write.csv(kin_activity,'./kinase_tf_output/CFA_kin_activity.csv',row.names = F)
 
 
 
@@ -92,7 +97,7 @@ dorothea_df<- as.data.frame(dorothea_hs[dorothea_hs$confidence %in% c("A","B","C
 #import the RNAseq data. It has entrez gene identifiers, but we need it to have gene symbols to match dorothea database, so we have
 #to do some id conversion as well
 RNA_differential_analysis <- as.data.frame(
-  read.csv("./Data/Proteomics/CFA_panacea_volcano_data_16plex_data.csv"))
+  read.csv("./Data/CFA_panacea_volcano_data_16plex_data.csv"))
 
 
 # Mouse and Human gene ortholog table
