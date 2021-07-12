@@ -7,6 +7,7 @@ library(stringr)
 
 
 
+
 CARNIVAL_options <- cosmosR::default_CARNIVAL_options()
 CARNIVAL_options$solverPath <- "/Applications/CPLEX_Studio201/cplex/bin/x86-64_osx/cplex"
 CARNIVAL_options$solver <- "cplex" #or cbc
@@ -19,7 +20,9 @@ CARNIVAL_options$threads <- 2
 # load PKN
 meta_pkn <- cosmosR::meta_network
 tf_dorothea <- cosmosR::load_tf_regulon_dorothea()
-
+indra_sif <- read.csv('./output/indra_sif.csv')
+indra_sif <- dplyr::select("agA_ns", "agA_id", "agA_name",
+                           "agB_ns", "agB_id", "agB_name")
 cosmos_dir <- '~/gitHub/panacea_indra/proteomics/cosmos/'
 
 cfa_kinase <- read.csv(paste0(cosmos_dir, 'dorothea_output/CFA_kin_activity.csv'))
