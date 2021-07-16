@@ -17,7 +17,7 @@ source("./scripts/viper_functions.R")
 #import the data
 phospho_differential_analysis <- 
   read.csv("./Data/panacea_phospho_human_mapped.csv")
-
+indra_tf <- read.csv('./input/transcription_factors.csv')
 
 #format it properly
 phospho_filtered <- phospho_differential_analysis %>% 
@@ -80,7 +80,8 @@ names(kin_activity) <- c("ID","NES")
 dir.create('../panacea_indra/other/cosmos/input/', showWarnings = F)
 
 kin_activity$NES_abs <- abs(kin_activity$NES)
-kin_activity$NES <- kin_activity$NES_abs[which(kin_activity$NES < 0)]*(-1)
+kin_activity$NES_abs[which(kin_activity$NES < 0)] <- 
+  kin_activity$NES_abs[which(kin_activity$NES < 0)]*(-1)
 kin_activity$NES_abs <- NULL
 kin_activity <- kin_activity %>% arrange(desc(kin_activity$NES))
 write.csv(kin_activity,'./kinase_tf_output/CFA_kin_activity.csv',row.names = F)
@@ -94,6 +95,30 @@ library(dorothea)
 #First we import the dorothea regulons (using only confidence A, B, and C), see dorothea publication for information on confidence levels
 dorothea_df<- as.data.frame(dorothea_hs[dorothea_hs$confidence %in% c("A","B","C"),c(3,1,4)])
 
+# Take increase/decrease amount from INDRA and run the TF activity prediction
+# Also take TF specific statements by using filter in indra/resources/TF
+
+# import indra sif
+indra_sif <- read.csv('./output/indra_sif.csv')
+indra_sif_filtered <- indra_sif %>% filter(stmt_type == 'DecreaseAmount' |
+                                           stmt_type == 'IncreaseAmount')
+
+#indra_sif_tf <- indra_sif_filtered[indra_sif_filtered$agA_name %in% dorothea_df$tf, ]
+indra_sif_filtered <- indra_sif_filtered %>% select('agA_name', 
+                                              'agB_name', 
+                                              'stmt_type')
+
+indra_sif_filtered$pairs <- paste(indra_sif_filtered$agA_name, 
+                            indra_sif_filtered$agB_name, sep='_')
+indra_sif_filtered <- indra_sif_filtered[, c("agB_name", "agA_name","stmt_type","pairs" )]
+indra_sif_filtered <- indra_sif_filtered[!duplicated(indra_sif_fil$pairs),]
+indra_sif_filtered$sign <- ifelse(indra_sif_filtered$stmt_type == 'IncreaseAmount', 1, -1)
+indra_sif_filtered <- indra_sif_filtered[, c("agB_name","agA_name","sign")]
+
+# import indra TF statements
+indra_sif_tf <- read.csv('./output/indra_all_tf.csv', row.names = 1)
+indra_sif_tf$sign <- ifelse(indra_sif_tf$stmt_type == 'IncreaseAmount', 1, -1)
+indra_sif_tf <- indra_sif_tf[, c("agB","agA","sign")]
 #import the RNAseq data. It has entrez gene identifiers, but we need it to have gene symbols to match dorothea database, so we have
 #to do some id conversion as well
 RNA_differential_analysis <- as.data.frame(
@@ -124,6 +149,7 @@ names(RNAseq_entrez_to_symbol)[3] <- "HGNC_SYMBOL"
 #this way, we will have our gene entrez identifiers mapped to their corresponding symbols in the differential analysis dataframe
 #of course, there are many other way to achievethis goal.
 RNA_differential_analysis <- merge(RNA_differential_analysis, RNAseq_entrez_to_symbol[,c(1,3)], by='HGNC_SYMBOL')
+
 #RNA_differential_analysis <- RNA_differential_analysis[,c(8,2:7)]
 #names(RNA_differential_analysis)[1] <- "ID"
 RNA_differential_analysis$HGNC_SYMBOL <- gsub("_.*","",RNA_differential_analysis$HGNC_SYMBOL)
@@ -135,16 +161,24 @@ eset <- RNA_differential_analysis$fold.change
 names(eset) <- RNA_differential_analysis$HGNC_SYMBOL
 
 #we also need to format the dorothea dataframe into a viper format
-dorothea_viper <- df_to_viper_regulon(dorothea_df)
+dorothea_viper <- df_to_viper_regulon(distinct(indra_sif_tf))
 
 #Now we estimate the TF activities using viper
-TF_activities <- as.data.frame(viper(eset = eset, regulon = dorothea_viper, minsize = 10, adaptive.size = F, eset.filter = F, pleiotropy = T))
+TF_activities <- as.data.frame(viper(eset = eset, regulon = dorothea_viper, 
+                                     minsize = 10, adaptive.size = F, 
+                                     eset.filter = F, pleiotropy = T))
 TF_activities$TF <- row.names(TF_activities)
 
 #that's just to make the dataframe pretty
 TF_activities <- TF_activities[,c(2,1)]
 names(TF_activities) <- c("ID","NES")
-write.csv(TF_activities, './dorothea_output/CFA_TF_activity.csv',row.names = F)
+
+TF_activities$NES_abs <- abs(TF_activities$NES)
+TF_activities$NES_abs[which(TF_activities$NES < 0)] <- TF_activities$NES_abs[which(TF_activities$NES < 0)]*(-1)
+TF_activities$NES <- NULL
+TF_activities <- TF_activities %>% arrange(desc(TF_activities$NES_abs))
+
+write.csv(TF_activities, './kinase_tf_output/INDRA_SIF_TF_ALL_CFA.csv',row.names = F)
 
 ########## CONCLUSION
 
