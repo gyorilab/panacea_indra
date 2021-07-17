@@ -18,6 +18,31 @@ def download_statements(hashes):
             stmts_by_hash[stmt.get_hash()] = stmt
     return stmts_by_hash
 
+
+def filter_db_only(stmts):
+    new_stmts = []
+    for stmt in stmts:
+        sources = {ev.source_api for ev in stmt.evidence}
+        if sources <= {'reach', 'sparser', 'trips', 'rlimsp', 'medscan', 'eidos'}:
+            continue
+        new_stmts.append(stmt)
+    return new_stmts
+
+
+def make_dataframe(stmts):
+    tf_df = []
+    for stmt in tqdm.tqdm(stmts):
+        agA = stmt.subj.name
+        agB = stmt.obj.name
+
+        tf_df.append({
+            'agA' : agA,
+            'agB' : agB,
+            'stmt_type' : type(stmt).__name__
+        })
+    return pd.DataFrame(tf_df)
+
+
 wd = __file__
 
 INDRA_SIF = os.path.join(os.pardir, 'input', 'sif.pkl')
@@ -31,7 +56,7 @@ for r,c in SIF.iterrows():
     if c[n_stmt_type] == 'IncreaseAmount' or c[n_stmt_type] == 'DecreaseAmount':
         hash_set.add(c[n_stmt_hash])
 
-stmts = download_statements(hash_set)
+#stmts = download_statements(hash_set)
 indra_stmts = list(stmts.values())
 with open('../output/all_stmts.pkl', 'wb') as fh:
     pickle.dump(indra_stmts, fh)
@@ -39,17 +64,12 @@ with open('../output/all_stmts.pkl', 'wb') as fh:
 indra_stmts = filter_human_only(indra_stmts)
 indra_stmts = filter_genes_only(indra_stmts)
 indra_stmts = filter_transcription_factor(indra_stmts)
+indra_stmts_db_only = filter_db_only(indra_stmts)
 
 
-tf_df = []
-for stmts in tqdm.tqdm(indra_stmts):
-    agA = stmts.subj.name
-    agB = stmts.obj.name
-    
-    tf_df.append({
-        'agA' : agA,
-        'agB' : agB,
-        'stmt_type' : type(stmts).__name__
-    })
-        
-pd.DataFrame(tf_df).to_csv('../output/indra_all_tf.csv')
+indra_stmts_df = make_dataframe(indra_stmts)
+indra_stmts_df.to_csv('../output/indra_all_tf.csv')
+
+
+indra_stmts_db_only_df = make_dataframe(indra_stmts_db_only)
+indra_stmts_db_only_df.to_csv('../output/indra_db_only_tf.csv')
