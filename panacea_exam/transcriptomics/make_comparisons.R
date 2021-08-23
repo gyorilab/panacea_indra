@@ -1,7 +1,9 @@
 library(dplyr)
+library(org.Hs.eg.db)
+library(AnnotationDbi)
 
+source(paste0(wd, 'functions.R'))
 wd = '~/gitHub/panacea_indra/panacea_exam/transcriptomics/'
-
 files <- na.omit(stringr::str_extract(list.files(paste0(wd, 'TPM_calculator')), 
                                       ".*_genes.out"))
 
@@ -23,3 +25,9 @@ for (f in files) {
   }
   
 }
+
+rownames(merged_df) <- merged_df$Gene_Id
+merged_df$Gene_Id <- NULL
+mtx <- as.matrix(merged_df)
+mtx_symbol <- ensembl2symbol(mtx)
+
