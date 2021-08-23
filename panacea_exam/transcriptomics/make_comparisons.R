@@ -31,3 +31,19 @@ merged_df$Gene_Id <- NULL
 mtx <- as.matrix(merged_df)
 mtx_symbol <- ensembl2symbol(mtx)
 
+# Get the average of the samples
+# (S1, S3), (S16, S18), (S19, S21), (S22, S24), 
+
+# No-drug
+S1_S3 <- merged_df[c("S1-no-drug", "S3-no-drug")]
+# Kw+Taxol - 1Hr
+S16_S18 <- merged_df[c("S16-Kw+Taxol-1hr", "S18-Kw+Taxol-1hr")]
+# Kw+Taxol - 6 Hr
+S19_S21 <- merged_df[c("S19-Kw+Taxol-6hr", "S21-Kw+Taxol-6hr")]
+# Kw+Taxol - 24 Hr
+S22_S24 <- merged_df[c("S22-Kw+Taxol-24hr", "S24-Kw+Taxol-24hr")]
+
+
+
+
+
