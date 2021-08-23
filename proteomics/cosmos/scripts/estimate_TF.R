@@ -106,7 +106,7 @@ run_viper <- function(eset, prior, outfile){
   TF_activities$NES <- NULL
   TF_activities <- TF_activities %>% arrange(desc(TF_activities$NES_abs))
   
-  write.csv(TF_activities, paste('./kinase_tf_output/', outfile, '.csv'),
+  write.csv(TF_activities, paste0('./kinase_tf_output/', outfile, '.csv'),
             row.names = F)
 }
 
