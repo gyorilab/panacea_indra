@@ -13,6 +13,8 @@ df <- readxl::read_xlsx(paste0(wd, '/inputs/List_of_genes_for_heatmaps.xlsx'))
 # Read kinase list
 kinase_list <- read.csv(paste0(wd, '/inputs/kinase.csv'), row.names = 1)
 
+# Read regenration new lit
+new_regeneration_list <- read.csv(paste0(wd, '/inputs/common_upregulated_genes_DRG.csv'))
 
 # Read counts file
 tpm <- read.csv(paste0(wd, '/outputs/tpm_counts.csv'))
@@ -36,7 +38,7 @@ key_kw_targets <- c(key_kw_targets, kw_missing_genes)
 key_kw_df <- tpm[rownames(tpm) %in% key_kw_targets,]
 key_kw_df <- t(scale(t(key_kw_df)))
 
-png(paste0(wd, '/outputs/key_kw_targets.png'),  width = 800, height = 1000, 
+png(paste0(wd, '/outputs/heatmaps/key_kw_targets.png'),  width = 800, height = 1000, 
     res=100)
 
 print(pheatmap(key_kw_df, fontsize_row = 9, 
@@ -86,6 +88,17 @@ hDRG_enriched_kinases_2 <- hDRG_enriched_kinases[161:320,]
 hDRG_enriched_kinases_3 <- hDRG_enriched_kinases[321:480, ]
 hDRG_enriched_kinases_4 <- hDRG_enriched_kinases[480:640, ]
 hDRG_enriched_kinases_5 <- hDRG_enriched_kinases[641:nrow(hDRG_enriched_kinases),]
+
+png(paste0(wd, '/outputs/heatmaps/hDRG_enriched_kinases.png'),  
+    width = 1300, height = 6900, 
+    res=400)
+
+print(pheatmap(hDRG_enriched_kinases, fontsize_row = 2, 
+               cluster_rows = T,
+               cluster_cols = F, annotation_legend = F))
+
+dev.off()
+
 
 png(paste0(wd, '/outputs/hDRG_enriched_kinases_1.png'),  
     width = 800, height = 1700, 
@@ -137,6 +150,23 @@ print(pheatmap(hDRG_enriched_kinases_5, fontsize_row = 9,
 
 dev.off()
 
+# plot regeneration
+human_mouse <- read.csv(paste0(wd, 'inputs/Human_Mouse.tsv'), sep = '\t')
+colnames(new_regeneration_list) <- 'Mouse.gene.name'
+new_regeneration_list <- merge(human_mouse, new_regeneration_list, by='Mouse.gene.name')
+
+regeneration <- tpm[rownames(tpm) %in% new_regeneration_list$Gene.name,]
+regeneration <- t(scale(t(regeneration)))
+
+png(paste0(wd, '/outputs/heatmaps/regeneration_full.png'),  
+    width = 800, height = 1700, 
+    res=100)
+
+print(pheatmap(regeneration, fontsize_row = 2, 
+               cluster_rows = T,
+               cluster_cols = F, annotation_legend = F))
+
+dev.off()
 
 # plot kinase 
 All_kinases <- kinase_list
@@ -149,6 +179,18 @@ All_kinases_2 <- All_kinases[161:320,]
 All_kinases_3 <- All_kinases[321:480, ]
 All_kinases_4 <- All_kinases[481:640, ]
 All_kinases_5 <- All_kinases[641:nrow(All_kinases), ]
+
+
+png(paste0(wd, '/outputs/heatmaps/kinases.png'),  
+    width = 1400, height = 6900, 
+    res=400)
+
+print(pheatmap(All_kinases, fontsize_row = 2, 
+               cluster_rows = T,
+               cluster_cols = F, annotation_legend = F))
+
+dev.off()
+
 
 png(paste0(wd, '/outputs/kinases_1.png'),  
     width = 800, height = 1700, 
