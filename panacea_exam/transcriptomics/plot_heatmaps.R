@@ -7,8 +7,12 @@ wd = '~/gitHub/panacea_indra/panacea_exam/transcriptomics/'
 # Read annotation file
 sif <- read.csv(paste0(wd, '/inputs/sif.tsv'), sep='\t', row.names = 'Sample')
 
+
 # Read input
 df <- readxl::read_xlsx(paste0(wd, '/inputs/List_of_genes_for_heatmaps.xlsx'))
+
+tubulin_assc <- readxl::read_xlsx(paste0(wd, '/inputs/TUBULIN_ASSOCIATED_GENES.xlsx'),
+                                  col_names = F)
 
 # Read kinase list
 kinase_list <- read.csv(paste0(wd, '/inputs/kinase.csv'), row.names = 1)
@@ -21,6 +25,7 @@ tpm <- read.csv(paste0(wd, '/outputs/tpm_counts.csv'))
 rownames(tpm) <- tpm$X
 tpm$X <- NULL
 tpm$Gene.description <- NULL
+
 
 # Remove read columns
 tpm[na.omit(stringr::str_extract(colnames(tpm), '.*Read'))] <- NULL
@@ -146,6 +151,20 @@ png(paste0(wd, '/outputs/hDRG_enriched_kinases_5.png'),
 
 print(pheatmap(hDRG_enriched_kinases_5, fontsize_row = 9, 
                cluster_rows = F,
+               cluster_cols = F, annotation_legend = F))
+
+dev.off()
+
+# Plot Tubulin associated genes
+tubulin <- tpm[rownames(tpm) %in% tubulin_assc$...1,]
+tubulin <- t(scale(t(tubulin)))
+
+png(paste0(wd, '/outputs/heatmaps/tublin_associated_genes.png'),  
+    width = 800, height = 1000, 
+    res=150)
+
+print(pheatmap(tubulin, fontsize_row = 5, 
+               cluster_rows = T,
                cluster_cols = F, annotation_legend = F))
 
 dev.off()
