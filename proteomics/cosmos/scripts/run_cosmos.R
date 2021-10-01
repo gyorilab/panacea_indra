@@ -1,5 +1,6 @@
 
 ## instal COSMOS
+library(visNetwork)
 library(devtools)
 #install_github("samuelbunga/cosmosR")
 library(cosmosR)
@@ -23,9 +24,9 @@ tf_dorothea <- cosmosR::load_tf_regulon_dorothea()
 indra_sif <- read.csv('./output/indra_sif.csv')
 indra_sif <- dplyr::select("agA_ns", "agA_id", "agA_name",
                            "agB_ns", "agB_id", "agB_name")
-cosmos_dir <- '~/gitHub/panacea_indra/proteomics/cosmos/'
+cosmos_dir <- '~/gitHub/panacea_indra/proteomics/cosmos/kinase_tf_output/'
 
-cfa_kinase <- read.csv(paste0(cosmos_dir, 'dorothea_output/CFA_kin_activity.csv'))
+cfa_kinase <- read.csv(paste0(cosmos_dir, 'kinase_tf_output/OP_CFA_KINASE_ACTIVITY.csv'))
 cfa_kinase$ID <- convert_genesymbols_to_entrezid(cfa_kinase$ID)
 cfa_kinase$ID <- paste0('X', cfa_kinase$ID)
 cfa_kinase_full <- cfa_kinase$NES 
@@ -34,7 +35,7 @@ cfa_kinase_full <- cfa_kinase_full[names(cfa_kinase_full) %in% meta_pkn$source |
                                      names(cfa_kinase_full) %in% meta_pkn$target]
 
 cfa_TF <- read.csv(paste0(cosmos_dir, 
-                          'dorothea_output/CFA_tf_activity.csv'))
+                          'kinase_tf_output/DOROTHEA_CFA_TF.csv'))
 cfa_TF$ID <- convert_genesymbols_to_entrezid(cfa_TF$ID)
 cfa_TF$ID <- paste0('X', cfa_TF$ID)
 cfa_TF_full <- cfa_TF$NES 
@@ -95,13 +96,9 @@ saveRDS(test_result_for, '../output/test_resuly_for.Rds')
 
 test_result_for <- format_COSMOS_res(test_result_for,
                                      metab_mapping = metabolite_to_pubchem,
-                                     measured_nodes = unique(c(names(cfa_kinase_full),
-                                                               names(cfa_TF_full))),
+                                     measured_nodes = unique(c(names(kw),
+                                                               names(tf))),
                                      omnipath_ptm = omnipath_ptm)
-
-
-
-
 
 
 ## Tutorial section: metabolism to signaling 
@@ -114,9 +111,9 @@ CARNIVAL_options$threads <- 2
 
 
 test_back <- preprocess_COSMOS_metabolism_to_signaling(meta_network = meta_pkn,
-                                                       signaling_data = cfa_TF_full,
-                                                       metabolic_data = cfa_kinase_full,
-                                                       diff_expression_data = transcript_data,
+                                                       signaling_data = tf,
+                                                       metabolic_data = kw,
+                                                       diff_expression_data = rna,
                                                        maximum_network_depth = 15,
                                                        remove_unexpressed_nodes = FALSE,
                                                        CARNIVAL_options = CARNIVAL_options
@@ -162,3 +159,19 @@ network_plot <- display_node_neighboorhood(central_node = 'BCAT1',
 
 print(network_plot)
 sessionInfo()
+
+full_sif <- readRDS('./output/sep-4/full_sif.Rds')
+full_attributes <- readRDS('./output/sep-4/full_attributes.Rds')
+write.csv(full_sif, './output/sep-4/full_sif.csv', col.names = T, row.names = F)
+write.csv(full_attributes, './output/sep-4/full_attributes.csv', col.names = T, row.names = F)
+
+network_plot <- display_node_neighboorhood(central_node = 'JAK3', 
+                                           sif = full_sif, 
+                                           att = full_attributes, 
+                                           n = 5)
+#print(network_plot)
+visSave(network_plot, 
+        file = "./output/sep-4/network.html", 
+        background = "white")
+
+

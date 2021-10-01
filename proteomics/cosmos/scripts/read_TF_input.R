@@ -25,5 +25,6 @@ mart_table <- read.table('./input/mouse_human_orthologue.txt',
 
 #import a mapping table downloaded from uniprot
 RNAseq_entrez_to_symbol <- as.data.frame(read_delim("./input/RNAseq_entrez_to_symbol", 
-                                                    "\t", escape_double = FALSE, col_types = cols(`yourlist:M20191127216DA2B77BFBD2E6699CA9B6D1C41EB259129CL` = col_character()), 
+                                                    "\t", escape_double = FALSE, 
+                                                    col_types = cols(`yourlist:M20191127216DA2B77BFBD2E6699CA9B6D1C41EB259129CL` = col_character()), 
                                                     trim_ws = TRUE)) #from uniprot 20191127

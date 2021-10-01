@@ -25,11 +25,10 @@ indra_sif_filtered <- indra_sif_filtered[, c("agB_name",
 indra_sif_filtered$pairs <- paste(indra_sif_filtered$agA_name,
                                   indra_sif_filtered$agB_name,
                                   sep='_')
+
 indra_sif_filtered <- indra_sif_filtered[!duplicated(indra_sif_filtered$pairs),]
 indra_sif_filtered$sign <- ifelse(indra_sif_filtered$stmt_type == 'IncreaseAmount', 1, -1)
 indra_sif_filtered <- indra_sif_filtered[, c("agB_name","agA_name","sign")]
-
-
 
 
 ## FORMATTING INDRA SIF FILTERED TO TF
