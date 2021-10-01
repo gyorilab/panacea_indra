@@ -1,0 +1,15 @@
+Sample	condition
+S1.no.drug_TPM	no_drug
+S10.Taxol.1hr_TPM	Taxol
+S12.Taxol.6hr_TPM	Taxol
+S14.Taxol.24hr_TPM	Taxol
+S16.Kw.Taxol.1hr_TPM	Kw_taxol
+S18.Kw.Taxol.1hr_TPM	Kw_taxol
+S19.Kw.Taxol.6hr_TPM	Kw_taxol
+S21.Kw.Taxol.6hr_TPM	Kw_taxol
+S22.Kw.Taxol.24hr_TPM	Kw_taxol
+S24.Kw.Taxol.24hr_TPM	Kw_taxol
+S3.no.drug_TPM	no_drug
+S4.Kw.1hr_TPM 	Kw
+S6.Kw.6hr_TPM	Kw
+S8.Kw.24hr_TPM	Kw
