@@ -1,3 +1,4 @@
+*.ipynb
 .nextflow*
 work
 functions.py
@@ -12,3 +13,5 @@ output
 *zip
 *Rdata
 *.pkl
+*.log
+*.Rhistory
