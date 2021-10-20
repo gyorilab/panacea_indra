@@ -1,8 +1,8 @@
 #!/usr/bin/env nextflow
 
-params.input = "/Users/sbunga/PycharmProjects/INDRA/ligandReceptorInteractome/input/"
+params.input = "/Users/sbunga/gitHub/panacea_indra/panacea_indra/nextflow/input/"
 params.output = "/Users/sbunga/gitHub/panacea_indra/panacea_indra/nextflow/output/"
-params.pkl = "/Users/sbunga/gitHub/panacea_indra/panacea_indra/nextflow/output/pkl"
+
 
 
 goa_human = Channel.fromPath( "$params.input/goa_human.gaf" )
@@ -20,6 +20,23 @@ Human_Pain_Genes_DB = Channel.fromPath( "$params.input/Human_Pain_Genes_DB.tsv" 
 ligand_receptor_spreadsheet = Channel.fromPath( "$params.input/ncomms8866-s3.xlsx")
 
 
+process create_cellphonedb_indra_op_database{
+    
+    cache 'lenient'
+
+    input:
+
+    output:
+    
+    script:
+    """
+    python3 $workflow.projectDir/scripts/create_cellphonedb_database.py
+    """
+}
+
+
+
+/*
 process main_inputs {
     
     cache 'lenient'
@@ -55,6 +72,7 @@ process main_inputs {
 }
 
 
+
 process small_molecule_search {
     cache 'lenient'
 
@@ -79,7 +97,7 @@ process small_molecule_search {
 targets_by_drug.into {td1; td2; td3; td4}
 
 
-/*
+
 process cell_types{
     
     cache 'lenient'
@@ -130,6 +148,7 @@ process get_cell_type_indra_statements {
     file 'possible_db_drug_targets.pkl' into possible_db_drug_targets
     file 'stmts_db_by_cell_type.pkl' into stmts_db_by_cell_type
     file 'stmts_by_cell_type.pkl' into stmts_by_cell_type
+    file 'all_ligands_by_receptor.pkl' into all_ligands_by_receptor
     //file 'all_ligand_receptor_statements.pkl' into all_ligand_receptor_statements
     file '*_ligands_by_receptor.pkl' into ligands_by_receptor
     file '*_ligands_by_receptor_db.pkl' into ligands_by_receptor_db

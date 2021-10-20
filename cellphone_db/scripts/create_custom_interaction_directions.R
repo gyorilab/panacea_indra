@@ -2,12 +2,13 @@
 # Code to make custom interactions file 
 # for drawing heatmaps
 ###########
-all_samples <- c('healthy', 'incision', 'zymo', 'saline')
+all_samples <- c('healthy', 'incision') 
+#'zymo', 'saline')
 
 for (s in all_samples) {
   
   meta = read.csv(file = paste0('./input/neuro_',s,'_meta_table.tsv'), comment.char = '', sep='\t')
-  all_intr = read.table(paste0('./Outputs/neuro_',s,'_cellphonedb_nature/pvalues.txt'), header=T, stringsAsFactors = F, 
+  all_intr = read.table(paste0('./Outputs/neuro_',s,'_pvalue0.1_cellphonedb_nature/pvalues.txt'), header=T, stringsAsFactors = F, 
                         sep='\t', comment.char = '', check.names = F)
   main_cols <- colnames(all_intr)[1:11]
   

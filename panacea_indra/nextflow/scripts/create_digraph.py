@@ -10,10 +10,8 @@ from indra.assemblers.html import HtmlAssembler
 
 
 def create_interaction_digraph(ligand_receptors,
-                               sorted_enzyme_FC,
-                               fname,
-                               enzyme_product_dict,
-                               products_receptors):
+                               fname):
+
   '''
   This function takes two dictionaries as input,
   ligand receptors and enzyme fold change and creates
@@ -35,35 +33,7 @@ def create_interaction_digraph(ligand_receptors,
   fname : str
       output file name
   '''
-
-  ligand_receptors = dict(sorted(ligand_receptors.items(),
-                                 reverse=True))
-  G = networkx.DiGraph()
-
-  top_lg_rc = dict(sorted(itertools.islice(ligand_receptors.items(), 30)))
-  top_en = dict(itertools.islice(sorted_enzyme_FC.items(), 30))
-
-  for FC_lg, rcs in top_lg_rc.items():
-      for rc in rcs:
-          G.add_node(FC_lg[1], color='green')
-          G.add_edge(FC_lg[1], rc, label="{:.2f}".format(FC_lg[0]))
-  for en_FC, en in top_en.items():
-      for chem in enzyme_product_dict[en]:
-          for rcs in products_receptors[chem]:
-              G.add_node(en, color='red')
-              G.add_edge(en, chem, label="{:.2f}".format(en_FC))
-              G.add_edge(chem, rcs)
-
-  G.graph.setdefault('graph', {})['rankdir'] = 'LR'
-  ag = networkx.nx_agraph.to_agraph(G)
-  fname = os.path.join(OUTPUT, fname + "interactions_digraph.pdf")
-  ag.draw(fname, prog='dot')
-
-
-
-def create_interaction_digraph(ligand_receptors,
-                               fname):
-
+  
   ligand_receptors = dict(sorted(ligand_receptors.items(),
                                  reverse=True))
   G = networkx.DiGraph()

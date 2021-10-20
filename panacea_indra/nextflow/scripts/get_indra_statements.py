@@ -315,7 +315,8 @@ if __name__ == '__main__':
         count += 1
 
 
-
+    # Creating a dataframe of all ligand
+    # receptor interactions
     interactions = []
     for cells in all_ligands_by_receptor:
         for rcs, lgs in all_ligands_by_receptor[cells].items():

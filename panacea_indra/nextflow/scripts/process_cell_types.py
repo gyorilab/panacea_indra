@@ -152,9 +152,6 @@ if __name__ == '__main__':
                           for k, v in um.uniprot_gene_name.items()
                           if k in um.uniprot_mgi}
 
-    #IMMUNE_CELLTYPE_LIST = ['DCs',
-    #                        'Dermal Macs']
-
 
 
     IMMUNE_CELLTYPE_LIST = ['DCs',

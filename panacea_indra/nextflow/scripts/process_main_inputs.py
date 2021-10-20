@@ -20,33 +20,6 @@ from indra_db.client.principal.curation import get_curations
 from indra.databases.hgnc_client import get_hgnc_from_mouse, get_hgnc_name
 
 
-PARSER = ag.ArgumentParser()
-PARSER.add_argument('--input')
-PARSER.add_argument('--output')
-PARSER.add_argument('--receptors_in_data')
-PARSER.add_argument('--all_enzymes')
-PARSER.add_argument('--full_ligand_set')
-PARSER.add_argument('--data_spreadsheet')
-PARSER.add_argument('--go_annotations')
-PARSER.add_argument('--ion_channels')
-PARSER.add_argument('--surface_protein_wb')
-PARSER.add_argument('--receptors_genes_go')
-PARSER = PARSER.parse_args()
-
-# Parse arguments
-INPUT = PARSER.input
-OUTPUT = PARSER.output
-RECEPTORS_IN_DATA = PARSER.receptors_in_data
-ALL_ENZYMES = PARSER.all_enzymes
-FULL_LIGAND_SET = PARSER.full_ligand_set
-GO_ANNOTATIONS = PARSER.go_annotations
-DATA_SPREADSHEET = PARSER.data_spreadsheet
-ION_CHANNELS = PARSER.ion_channels
-SURFACE_PROTEINS_WB = PARSER.surface_protein_wb
-RECEPTOR_GENES_GO = PARSER.receptors_genes_go
-
-
-
 logger = logging.getLogger('receptor_ligand_interactions')
 
 mouse_gene_name_to_mgi = {v: um.uniprot_mgi.get(k)
@@ -196,7 +169,33 @@ def read_workbook(workbook):
 
 if __name__ == '__main__':
 
+    PARSER = ag.ArgumentParser()
+    PARSER.add_argument('--input')
+    PARSER.add_argument('--output')
+    PARSER.add_argument('--receptors_in_data')
+    PARSER.add_argument('--all_enzymes')
+    PARSER.add_argument('--full_ligand_set')
+    PARSER.add_argument('--data_spreadsheet')
+    PARSER.add_argument('--go_annotations')
+    PARSER.add_argument('--ion_channels')
+    PARSER.add_argument('--surface_protein_wb')
+    PARSER.add_argument('--receptors_genes_go')
+    PARSER = PARSER.parse_args()
+
+    # Parse arguments
+    INPUT = PARSER.input
+    OUTPUT = PARSER.output
+    RECEPTORS_IN_DATA = PARSER.receptors_in_data
+    ALL_ENZYMES = PARSER.all_enzymes
+    FULL_LIGAND_SET = PARSER.full_ligand_set
+    GO_ANNOTATIONS = PARSER.go_annotations
+    DATA_SPREADSHEET = PARSER.data_spreadsheet
+    ION_CHANNELS = PARSER.ion_channels
+    SURFACE_PROTEINS_WB = PARSER.surface_protein_wb
+    RECEPTOR_GENES_GO = PARSER.receptors_genes_go
+
     GOA = _load_goa_gaf(GO_ANNOTATIONS)
+    
     # Read and extract cell surface proteins from CSPA DB
     wb = openpyxl.load_workbook(SURFACE_PROTEINS_WB)
     surface_protein_set = set(row[4].value for row in wb['Sheet 1']

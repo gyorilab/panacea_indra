@@ -825,7 +825,7 @@ if __name__ == '__main__':
         indra_op_filtered = ac.filter_by_curation(indra_op_stmts,
                                                   curations=db_curations)
         indra_op_filtered = filter_complex_statements(indra_op_filtered,
-                                                      ligands_in_data,
+                                                      ligands_in_data.values(),
                                                       receptors_in_data)
 
         # We do this again because when removing complex members, we
