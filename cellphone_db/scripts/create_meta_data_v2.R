@@ -106,6 +106,15 @@ renamed_idents <- factor(active.ident_neuron$cell_types)
 names(renamed_idents) <- active.ident_neuron$cells
 neuron_cells@active.ident <- renamed_idents
 
+# Make dotplots
+genes_to_plot <- c('Ptger1', 'Il1rap', 'Tnfrsf1a', 'Osmr', 
+                   'Ccr1', 'Itga9', 'Cd47', 'Igf2r')
+
+png('../cellphone_db/output/plots/dotplot_1.png', width=1500,
+    height = 1000, res = 150)
+print(DotPlot(neuron_cells, features = genes_to_plot))
+dev.off()
+saveRDS(neuron_cells, './output/pkl/neuron_cells.Rds')
 
 dir.create('output/counts', showWarnings = F)
 dir.create('output/meta_data', showWarnings = F)
