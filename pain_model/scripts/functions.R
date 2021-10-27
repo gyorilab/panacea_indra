@@ -1,11 +1,16 @@
-calculate_pct <- function(){
+calculate_pct <- function(obj){
+  
+  # Subsetting the obj object and extracting the cells
+  # from each cluster
+  all_cell_types <- names(table(obj@meta.data$cell_type))
+  all_clusters = list()
   
   for(n in all_cell_types){
     enriched_genes[, n] <- NA
   }
   
   for(n in 1:length(all_cell_types)){
-    all_clusters[[all_cell_types[n]]] = subset(mDRG, cell_type == 
+    all_clusters[[all_cell_types[n]]] = subset(obj, cell_type == 
                                                  all_cell_types[n])
   }
   

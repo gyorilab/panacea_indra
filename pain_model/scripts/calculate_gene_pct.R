@@ -3,6 +3,8 @@ library(stringr)
 library(Seurat)
 library(dplyr)
 
+source('./scripts/functions.R')
+
 ## Notes
 
 # calculate fraction of the gene in a cluster:
@@ -38,6 +40,8 @@ vis_cortex_meta <- read.csv('./data/Primary_mouse/visual_cortex/GSE71585_Cluster
 vis_cortex <- vis_cortex %>% column_to_rownames('gene')
 vis_cortex <- CreateSeuratObject(vis_cortex)
 vis_cortex$cell_type <- vis_cortex_meta$broad_type
+vis_cortex_enriched_mat <- calculate_pct(vis_cortex, enriched_genes)
+write.csv(vis_cortex_enriched_mat, './output/gene_pct_visual_cortex_clusters.csv', row.names = F)
 
 
 # DRG neuron data from Will's lab
@@ -46,11 +50,9 @@ mDRG <- CreateSeuratObject(mDRG, project = 'mDRG')
 mDRG$cell_type <- NA
 mDRG$cell_type <- str_match(rownames(mDRG@meta.data), "(.*rep\\d_)([A-Za-z0-9\\s^_]+)(_.*)")[,3]
 
+mDRG_enriched_mat <- calculate_pct(mDRG, enriched_genes)
+write.csv(mDRG_enriched_mat, './output/gene_pct_drg_clusters.csv', row.names = F)
 
-# Subsetting the mDRG object and extracting the cells
-# from each cluster
-all_cell_types <- names(table(mDRG@meta.data$cell_type))
-all_clusters = list()
 
 
 # un-mapped genes
