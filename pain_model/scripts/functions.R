@@ -1,4 +1,4 @@
-calculate_pct <- function(obj){
+calculate_pct <- function(obj, enriched_genes){
   
   # Subsetting the obj object and extracting the cells
   # from each cluster
@@ -26,10 +26,5 @@ calculate_pct <- function(obj){
       }
     }
   }
-  
-  write.csv(enriched_genes, './output/gene_pct_drg_clusters.csv', row.names = F)
-  
-  
-  
-  
+  return(enriched_genes)
 }

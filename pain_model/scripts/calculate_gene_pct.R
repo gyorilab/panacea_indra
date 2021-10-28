@@ -3,7 +3,7 @@ library(stringr)
 library(Seurat)
 library(dplyr)
 
-source('./scripts/functions.R')
+source('~/gitHub/panacea_indra/pain_model/scripts/functions.R')
 
 ## Notes
 
@@ -39,7 +39,7 @@ vis_cortex_meta <- read.csv('./data/Primary_mouse/visual_cortex/GSE71585_Cluster
 
 vis_cortex <- vis_cortex %>% column_to_rownames('gene')
 vis_cortex <- CreateSeuratObject(vis_cortex)
-vis_cortex$cell_type <- vis_cortex_meta$broad_type
+vis_cortex$cell_type <- vis_cortex_meta$primary_type
 vis_cortex_enriched_mat <- calculate_pct(vis_cortex, enriched_genes)
 write.csv(vis_cortex_enriched_mat, './output/gene_pct_visual_cortex_clusters.csv', row.names = F)
 
