@@ -76,4 +76,4 @@ mheart <- mheart[,mheart_anno$cell]
 mheart@meta.data <- mheart@meta.data[mheart_anno$cell,]
 mheart@meta.data$cell_type <- mheart_anno$free_annotation
 mheart_enriched_mat <- calculate_pct(mheart, enriched_genes)
-  
+write.csv(mheart_enriched_mat, './output/gene_pct_heart_clusters.csv', row.names = F)  
