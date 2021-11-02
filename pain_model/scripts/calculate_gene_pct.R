@@ -59,3 +59,21 @@ write.csv(mDRG_enriched_mat, './output/gene_pct_drg_clusters.csv', row.names = F
 #unmapped_genes <- df$...1[sapply(df$...1, function(x) !x %in% enriched_genes$HUMAN_SYMBOL)]
 #print(unmapped_genes)
 
+
+
+# Mouse Heart
+mheart <- read.csv('./data/Primary_mouse/mHeart/Heart-counts.csv', row.names = 1)
+mheart_meta <- read.csv('./data/Primary_mouse/mHeart/metadata_FACS.csv')
+mheart_anno <- read.csv('./data/Primary_mouse/mHeart/annotations_FACS.csv')
+# Filter annotations
+mheart_anno <- mheart_anno[mheart_anno$cell %in% colnames(mheart), ]
+mheart <- CreateSeuratObject(mheart)
+
+# Filter out cells which are not in the annotation table
+mheart <- mheart[,mheart_anno$cell]
+
+# rearrange the cell ids in metadat
+mheart@meta.data <- mheart@meta.data[mheart_anno$cell,]
+mheart@meta.data$cell_type <- mheart_anno$free_annotation
+mheart_enriched_mat <- calculate_pct(mheart, enriched_genes)
+  
