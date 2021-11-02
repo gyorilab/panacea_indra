@@ -1,0 +1,158 @@
+"MOUSE_SYMBOL","Description","Subcellular_localization","Functional_type_of_protein","cardiac muscle cell","conduction cells","endocardial cell","endothelial cell","fibroblast","leukocyte","Myofibroblast","Smooth_Muscle_Cells"
+"A3galt2","alpha 1,3-galactosyltransferase 2","Cytoplasm","enzyme",0,0,0.61,0.51,0.14,0.57,0,0
+"Abca6","ATP binding cassette subfamily A member 6","Plasma Membrane","transporter",3.01,21.43,0.61,1.36,32.61,5.54,17.42,2.38
+"Acpp","acid phosphatase 3","Extracellular Space","phosphatase",0,0,0,0.17,0.47,0.76,0.56,0
+"Adgrg2","adhesion G protein-coupled receptor G2","Plasma Membrane","G-protein coupled receptor",NA,NA,NA,NA,NA,NA,NA,NA
+"Akap12","A-kinase anchoring protein 12","Cytoplasm","transporter",18.05,75,43.03,57.69,81.6,6.69,75.28,30.95
+"Amigo3","adhesion molecule with Ig like domain 3","Other","other",3.01,3.57,1.82,0.42,1.32,2.29,0.56,0
+"Anxa2","annexin A2","Plasma Membrane","other",48.87,89.29,94.55,84.45,94.95,69.6,79.21,52.38
+"Arhgap28","Rho GTPase activating protein 28","Cytoplasm","other",0.75,0,7.88,12.32,11.75,0.19,0.56,0
+"Arpc1b","actin related protein 2/3 complex subunit 1B","Cytoplasm","other",33.08,92.86,83.03,73.41,87.64,97.71,66.85,38.1
+"Asic3","acid sensing ion channel subunit 3","Plasma Membrane","ion channel",NA,NA,NA,NA,NA,NA,NA,NA
+"Atp5g2","ATP synthase membrane subunit c locus 2","Cytoplasm","transporter",90.23,64.29,81.82,49.28,62.91,78.39,53.37,73.81
+"Avil","advillin","Plasma Membrane","other",4.51,0,2.42,0.34,0.85,0.38,1.12,0
+"Bcam","basal cell adhesion molecule (Lutheran blood group)","Plasma Membrane","transmembrane receptor",64.66,14.29,83.64,67.97,16.61,5.54,76.4,100
+"Bnc2","basonuclin 2","Nucleus","transcription regulator",0.75,0,0.61,0.51,4.81,0.57,0,0
+"Calcb","calcitonin-related polypeptide, beta","Extracellular Space","other",0.75,0,0,0.25,0.52,0.19,0,0
+"Capn9","calpain 9","Cytoplasm","peptidase",2.26,0,0,0.25,0.24,0,0,0
+"Ccdc68","coiled-coil domain containing 68","Cytoplasm","other",7.52,3.57,1.21,0.76,12.93,0.19,32.58,7.14
+"Cckar","cholecystokinin A receptor","Plasma Membrane","G-protein coupled receptor",0.75,0,0,0,0,0.19,0,0
+"Cd24a","CD24a antigen","Plasma Membrane","other",12.78,7.14,9.09,7.82,5.1,15.3,16.85,9.52
+"Cd44","CD44 molecule (Indian blood group)","Plasma Membrane","other",16.54,46.43,8.48,11.72,12.98,73.8,13.48,4.76
+"Cd55","CD55 molecule (Cromer blood group)","Plasma Membrane","other",3.76,7.14,43.03,8.92,56.87,8.99,3.93,2.38
+"Cd55b","CD55 molecule (Cromer blood group)","Plasma Membrane","other",NA,NA,NA,NA,NA,NA,NA,NA
+"Cd9","CD9 molecule","Plasma Membrane","other",35.34,100,98.18,66.78,89.48,56.98,34.27,71.43
+"Cdh1","cadherin 1","Plasma Membrane","other",2.26,3.57,1.21,1.53,1.56,3.63,0.56,4.76
+"Cdk15","cyclin dependent kinase 15","Plasma Membrane","kinase",0.75,0,0,0,0.19,0.19,2.25,7.14
+"Cdr1","cerebellar degeneration related protein 1","Other","other",0,3.57,0,0.08,6.51,0.76,1.69,0
+"Chp2","calcineurin like EF-hand protein 2","Cytoplasm","other",NA,NA,NA,NA,NA,NA,NA,NA
+"Col28a1","collagen type XXVIII alpha 1 chain","Extracellular Space","other",0,28.57,0,1.78,0.24,0.38,0,0
+"Cpne3","copine 3","Cytoplasm","kinase",43.61,42.86,43.03,27.53,53.8,45.89,47.19,33.33
+"CTSL","cathepsin V","Cytoplasm","peptidase",NA,NA,NA,NA,NA,NA,NA,NA
+"Cyp4f39","cytochrome P450 family 4 subfamily F member 22","Extracellular Space","enzyme",0,0,1.21,0.25,0.05,0.19,0,0
+"Cysltr2","cysteinyl leukotriene receptor 2","Plasma Membrane","G-protein coupled receptor",0,0,0,0.08,0,2.1,0,0
+"Dgkh","diacylglycerol kinase eta","Cytoplasm","kinase",1.5,7.14,4.85,16.91,4.39,7.07,15.17,11.9
+"Dock11","dedicator of cytokinesis 11","Cytoplasm","other",2.26,32.14,2.42,2.72,15.01,42.07,18.54,7.14
+"Dok4","docking protein 4","Plasma Membrane","other",15.04,0,15.76,31.1,4.62,5.35,7.87,2.38
+"Prrxl1","paired related homeobox protein-like 1","Other","transcription regulator",0.75,0,0,0,0.09,0.19,0,0
+"Eepd1","endonuclease/exonuclease/phosphatase family domain containing 1","Plasma Membrane","other",24.06,3.57,3.64,34.15,5.33,7.65,5.62,4.76
+"Egfl8","EGF like domain multiple 8","Extracellular Space","other",0,64.29,0.61,1.19,0.85,1.53,0.56,2.38
+"Gm7271","predicted gene 7271","Other","other",0,0,0,0.08,0.05,0,0,0
+"F2rl2","coagulation factor II thrombin receptor like 2","Plasma Membrane","G-protein coupled receptor",0.75,0,0,0.17,0.28,2.49,0.56,0
+"Fabp7","fatty acid binding protein 7","Cytoplasm","transporter",2.26,71.43,0,0.34,0.61,1.53,16.85,2.38
+"Fam189b","family with sequence similarity 189 member B","Other","other",7.52,0,9.09,2.63,12.65,5.74,6.18,9.52
+"Fam89a","family with sequence similarity 89 member A","Other","other",2.26,53.57,1.21,12.74,0.61,0.38,1.69,2.38
+"Fkbp1b","FKBP prolyl isomerase 1B","Cytoplasm","enzyme",0.75,3.57,7.88,1.44,6.32,16.63,0,0
+"Frmd3","FERM domain containing 3","Other","other",0,10.71,0,0.08,1.42,0,0,0
+"Fstl1","follistatin like 1","Extracellular Space","other",21.05,89.29,89.09,34.41,97.45,15.87,86.52,73.81
+"Fxyd2","FXYD domain containing ion transport regulator 2","Plasma Membrane","ion channel",4.51,0,1.21,1.53,3.63,34.42,34.27,4.76
+"Fxyd3","FXYD domain containing ion transport regulator 3","Plasma Membrane","ion channel",2.26,21.43,1.21,2.46,6.84,2.29,0.56,2.38
+"Gcnt2","glucosaminyl (N-acetyl) transferase 2 (I blood group)","Cytoplasm","enzyme",4.51,28.57,25.45,14.27,2.17,4.21,43.82,21.43
+"Gfra3","GDNF family receptor alpha 3","Plasma Membrane","transmembrane receptor",0.75,96.43,1.21,0.51,0.19,0.57,0,0
+"Gna14","G protein subunit alpha 14","Plasma Membrane","enzyme",0.75,0,0,0.25,1.13,0.38,3.37,7.14
+"Gpr35","G protein-coupled receptor 35","Plasma Membrane","G-protein coupled receptor",0,0,0.61,0.25,0.9,10.13,0,0
+"Grik1","glutamate ionotropic receptor kainate type subunit 1","Plasma Membrane","ion channel",0,0,0,0.17,0.24,0.57,0,2.38
+"Hmgcs2","3-hydroxy-3-methylglutaryl-CoA synthase 2","Cytoplasm","enzyme",28.57,82.14,8.48,6.8,57.86,7.27,8.43,16.67
+"Hoxd1","homeobox D1","Nucleus","transcription regulator",0,0,0,0,0,0,0,0
+"Htr3a","5-hydroxytryptamine receptor 3A","Plasma Membrane","ion channel",0,0,0,0.17,0,0.19,0,0
+"Il31ra","interleukin 31 receptor A","Plasma Membrane","transmembrane receptor",0,0,0,0.51,0.66,0,0.56,0
+"Isl1","ISL LIM homeobox 1","Nucleus","transcription regulator",0.75,0,0.61,0.51,0.52,0.57,0.56,2.38
+"Isl2","ISL LIM homeobox 2","Nucleus","transcription regulator",0,0,0,0.08,0.09,0,0,0
+"Kcnd1","potassium voltage-gated channel subfamily D member 1","Plasma Membrane","ion channel",0,0,0,0.08,1.6,0.19,1.69,0
+"C77080","KIAA1522","Other","other",3.76,17.86,7.88,4.33,11.89,1.15,7.3,2.38
+"Lgals9","galectin 9B","Cytoplasm","other",27.07,32.14,79.39,66.86,51.72,68.07,49.44,23.81
+"Lhfpl1","LHFPL tetraspan subfamily member 1","Other","other",0,0,0,0,0.28,0,0,0
+"Lpar3","lysophosphatidic acid receptor 3","Plasma Membrane","G-protein coupled receptor",0,0,0,0.08,0.38,1.53,0,0
+"Ly86","lymphocyte antigen 86","Plasma Membrane","other",9.02,7.14,13.94,9.6,9.58,87,6.18,14.29
+"Mcub","mitochondrial calcium uniporter dominant negative subunit beta","Cytoplasm","other",NA,NA,NA,NA,NA,NA,NA,NA
+"Mdfic2","predicted gene 765","Other","other",NA,NA,NA,NA,NA,NA,NA,NA
+"Gm765","predicted gene 765","Other","other",0,0,0,0,0.14,0,0,0
+"Mettl7a3","methyltransferase like 7A3","Other","other",0.75,0,0.61,0.08,0.19,0,0,0
+"Mettl7a1","methyltransferase like 7A3","Other","other",16.54,57.14,40.61,8.41,39.59,15.49,28.65,33.33
+"Methig1","methyltransferase like 7A3","Other","other",NA,NA,NA,NA,NA,NA,NA,NA
+"Mettl7a2","methyltransferase like 7A3","Other","other",0,0,0,0.08,0.38,0,0,0
+"Mrgprd","MAS related GPR family member D","Plasma Membrane","G-protein coupled receptor",0,0,0,0.08,0,0,0,0
+"Mrgpra2a","MAS-related GPR, member B5","Plasma Membrane","G-protein coupled receptor",0,0,0,0.08,0,0,0,0
+"Mrgpra1","MAS-related GPR, member B5","Plasma Membrane","G-protein coupled receptor",0,0,0,0.08,0,0,0,0
+"Mrgpra4","MAS-related GPR, member B5","Plasma Membrane","G-protein coupled receptor",0,0,0,0,0,0.19,0,0
+"Mrgpra2b","MAS-related GPR, member B5","Plasma Membrane","G-protein coupled receptor",0,0,0,0,0.05,0.76,0,0
+"Mrgprb4","MAS-related GPR, member B5","Plasma Membrane","G-protein coupled receptor",0,0,0,0,0,0,0,0
+"Mrgprx1","MAS-related GPR, member B5","Plasma Membrane","G-protein coupled receptor",0,0,0,0,0,0,0,0
+"Mrgpra9","MAS-related GPR, member B5","Plasma Membrane","G-protein coupled receptor",0,0,0,0,0,0,0,0
+"Mrgpra6","MAS-related GPR, member B5","Plasma Membrane","G-protein coupled receptor",0,0,0,0,0,0,0,0
+"Mrgprb1","MAS-related GPR, member B5","Plasma Membrane","G-protein coupled receptor",0,0,0,0.08,0.14,0.19,0,0
+"Mrgprb2","MAS-related GPR, member B5","Plasma Membrane","G-protein coupled receptor",0,0,0,0,0,0,0,0
+"Mrgprx2","MAS-related GPR, member B5","Plasma Membrane","G-protein coupled receptor",0,0,0.61,0.08,0.09,0,0,0
+"Mrgprb3","MAS-related GPR, member B5","Plasma Membrane","G-protein coupled receptor",0,0,0,0,0.05,0,0,0
+"Mrgprb8","MAS-related GPR, member B5","Plasma Membrane","G-protein coupled receptor",0,0,0,0,0,0,0,0
+"Mrgprb5","MAS-related GPR, member B5","Plasma Membrane","G-protein coupled receptor",0,0,0,0,0.05,0.19,0,0
+"Mrgpra3","MAS-related GPR, member B5","Plasma Membrane","G-protein coupled receptor",0,0,0,0.08,0,0,0,0
+"Ms4a3","membrane spanning 4-domains A3","Plasma Membrane","other",0,0,0,0.34,0.19,0.38,0,0
+"Gm20594","predicted gene, 20594","Other","other",57.14,3.57,6.06,15.12,4.62,6.69,8.99,21.43
+"Ngfr","nerve growth factor receptor","Plasma Membrane","transmembrane receptor",0,46.43,0.61,0.42,4.15,0.96,9.55,0
+"Nmb","neuromedin B","Extracellular Space","other",0,0,3.03,4.42,22.56,4.59,7.3,7.14
+"Ntrk1","neurotrophic receptor tyrosine kinase 1","Plasma Membrane","kinase",0.75,0,0,0.42,9.3,0.19,0,0
+"Osbpl3","oxysterol binding protein like 3","Cytoplasm","other",30.08,3.57,10.91,1.27,2.41,9.37,24.72,9.52
+"Ostf1","osteoclast stimulating factor 1","Nucleus","transcription regulator",47.37,28.57,63.03,60.75,53.61,83.37,52.25,45.24
+"P2rx3","purinergic receptor P2X 3","Plasma Membrane","ion channel",1.5,0,0,0.25,0.14,0,0,0
+"Parm1","prostate androgen-regulated mucin-like protein 1","Extracellular Space","other",72.18,3.57,28.48,1.02,2.83,0.76,49.44,78.57
+"Piezo2","piezo type mechanosensitive ion channel component 2","Other","ion channel",NA,NA,NA,NA,NA,NA,NA,NA
+"Pirt","phosphoinositide interacting regulator of transient receptor potential channels","Plasma Membrane","other",20.3,0,0,0.08,1.04,0,0,0
+"Plcb3","phospholipase C beta 3","Cytoplasm","enzyme",15.79,25,24.24,11.98,16.14,18.55,12.92,14.29
+"Pou4f1","POU class 4 homeobox 1","Nucleus","transcription regulator",2.26,0,0.61,0.08,0.38,0.19,0,0
+"Pou4f3","POU class 4 homeobox 3","Nucleus","transcription regulator",0,0,0,0,0.05,0.19,0,0
+"Ppef1","protein phosphatase with EF-hand domain 1","Extracellular Space","phosphatase",0,0,0.61,0,0.19,0,0,0
+"Ppm1j","protein phosphatase, Mg2+/Mn2+ dependent 1J","Other","phosphatase",33.08,0,1.21,6.46,0.8,1.34,2.25,2.38
+"Ppp1r1c","protein phosphatase 1 regulatory inhibitor subunit 1C","Cytoplasm","phosphatase",0.75,0,0,0,0.05,0,0,0
+"Prdm12","PR/SET domain 12","Nucleus","transcription regulator",0.75,0,0,0,0,0,0,0
+"Prph","peripherin","Plasma Membrane","other",0,0,0,0,0.47,0.38,5.06,4.76
+"Ptgdr","prostaglandin D2 receptor","Plasma Membrane","G-protein coupled receptor",0,0,0,0.25,0,0.19,0,0
+"Ptger3","prostaglandin E receptor 3","Plasma Membrane","G-protein coupled receptor",0,0,0,0.34,0.61,1.72,0,0
+"Ptgfr","prostaglandin F receptor","Plasma Membrane","G-protein coupled receptor",32.33,0,0.61,0.68,14.2,0.96,0.56,0
+"Ptgir","prostaglandin I2 receptor","Plasma Membrane","G-protein coupled receptor",1.5,0,0,0.68,28.79,4.21,36.52,11.9
+"Rab3d","RAB3D, member RAS oncogene family","Cytoplasm","enzyme",15.04,35.71,33.33,13.68,33.88,19.31,12.92,4.76
+"Rarres1","retinoic acid receptor responder 1","Plasma Membrane","other",2.26,0,0,7.65,4.25,0.96,0.56,0
+"Rbms3","RNA binding motif single stranded interacting protein 3","Cytoplasm","other",21.05,46.43,49.7,4.5,82.44,3.44,82.02,78.57
+"Rnf125","ring finger protein 125","Cytoplasm","enzyme",11.28,3.57,34.55,36.28,10.9,4.78,3.37,0
+"Runx1","RUNX family transcription factor 1","Nucleus","transcription regulator",5.26,10.71,7.27,2.8,3.45,61.57,1.12,4.76
+"S100a10","S100 calcium binding protein A10","Cytoplasm","other",28.57,78.57,80,75.53,92.64,79.54,41.01,19.05
+"S100a4","S100 calcium binding protein A4","Cytoplasm","other",2.26,75,2.42,1.78,17.37,28.68,2.81,11.9
+"S100a6","S100 calcium binding protein A6","Cytoplasm","transporter",24.06,92.86,44.24,41.21,97.4,47.61,77.53,59.52
+"S100a7a","S100 calcium binding protein A7A","Cytoplasm","other",0,3.57,0,0,1.98,0.38,0,0
+"S1pr3","sphingosine-1-phosphate receptor 3","Plasma Membrane","G-protein coupled receptor",3.76,14.29,2.42,1.78,38.84,1.53,74.72,76.19
+"Scn10a","sodium voltage-gated channel alpha subunit 10","Plasma Membrane","ion channel",11.28,0,0,0.08,0.33,0,0,0
+"Scn11a","sodium voltage-gated channel alpha subunit 11","Plasma Membrane","ion channel",0,0,0,0.25,0.05,0,0,0
+"Scn7a","sodium voltage-gated channel alpha subunit 7","Plasma Membrane","ion channel",9.02,100,2.42,3.31,81.12,2.87,49.44,19.05
+"Scn9a","sodium voltage-gated channel alpha subunit 9","Plasma Membrane","ion channel",0,0,0.61,0.25,0.14,0.19,1.12,0
+"Serpinb6a","serpin family B member 6","Cytoplasm","other",64.66,46.43,72.12,47.41,83.58,69.02,53.93,66.67
+"Serpinb6b","serpin family B member 6","Cytoplasm","other",52.63,3.57,3.64,2.63,2.31,2.87,1.69,0
+"Serpinb6d","serpin family B member 6","Cytoplasm","other",0,0,0,0,0,0.19,0,0
+"Serpinb6e","serpin family B member 6","Cytoplasm","other",0,0,0,0,0.05,0,0,0
+"Serpinb6c","serpin family B member 6","Cytoplasm","other",0.75,0,0.61,0,0.24,0,0,0
+"Six1","SIX homeobox 1","Nucleus","transcription regulator",0.75,0,0,0.34,0.66,0.19,0.56,0
+"Pqlc3","solute carrier family 66 member 3","Other","other",3.76,10.71,23.64,3.65,35.63,16.63,7.3,7.14
+"Slc6a19","solute carrier family 6 member 19","Plasma Membrane","transporter",0.75,0,0,0.08,0.09,0,0,0
+"Slc7a7","solute carrier family 7 member 7","Plasma Membrane","transporter",30.83,14.29,7.27,6.54,7.6,29.83,3.37,4.76
+"Slc9a9","solute carrier family 9 member A9","Cytoplasm","transporter",4.51,0,0,0.85,4.15,45.7,1.12,2.38
+"Sncg","synuclein gamma","Cytoplasm","other",1.5,0,7.88,15.29,1.27,0.19,51.69,100
+"Snx7","sorting nexin 7","Other","transporter",24.81,42.86,18.79,7.56,27.65,6.12,21.35,16.67
+"Sprr1a","small proline rich protein 1A","Plasma Membrane","other",0,14.29,3.64,4.08,5,2.87,2.25,2.38
+"Stbd1","starch binding domain 1","Cytoplasm","other",29.32,7.14,27.88,3.57,37,7.46,25.84,57.14
+"Sytl3","synaptotagmin like 3","Cytoplasm","other",1.5,0,1.21,0,2.45,2.1,0.56,0
+"Tafa4","TAFA chemokine like family member 4","Extracellular Space","other",NA,NA,NA,NA,NA,NA,NA,NA
+"Tlx2","T cell leukemia homeobox 2","Nucleus","transcription regulator",0,0,0,0,0,0.19,0,0
+"Tlx3","T cell leukemia homeobox 3","Nucleus","transcription regulator",0,0,0,0,0,0,0,0
+"Tmem233","transmembrane protein 233","Other","other",0,0,0,0.08,0,0,0,0
+"Tmem45b","transmembrane protein 45B","Extracellular Space","other",0.75,3.57,0,1.36,0.99,1.34,1.69,2.38
+"Tmem79","transmembrane protein 79","Cytoplasm","other",0.75,3.57,3.03,1.36,1.79,1.91,0.56,0
+"Trappc3l","trafficking protein particle complex 3 like","Other","other",NA,NA,NA,NA,NA,NA,NA,NA
+"Trarg1","trafficking regulator of GLUT4 (SLC2A4) 1","Plasma Membrane","other",NA,NA,NA,NA,NA,NA,NA,NA
+"Trim36","tripartite motif containing 36","Cytoplasm","enzyme",0,0,0,1.27,0.52,11.66,5.06,2.38
+"Trpa1","transient receptor potential cation channel subfamily A member 1","Plasma Membrane","transporter",0,0,0,0,0.28,0.19,0.56,0
+"Trpm8","transient receptor potential cation channel subfamily M member 8","Plasma Membrane","ion channel",0.75,0,1.21,0.25,0.09,0.19,0,0
+"Trpv1","transient receptor potential cation channel subfamily V member 1","Plasma Membrane","ion channel",0,0,0,0.17,0,0,0,2.38
+"Tspan8","tetraspanin 8","Plasma Membrane","other",2.26,3.57,1.21,3.57,2.12,3.25,3.37,0
+"Txn1","thioredoxin","Cytoplasm","enzyme",81.95,57.14,83.03,63.89,81.78,77.44,75.28,85.71
+"Tyrp1","tyrosinase related protein 1","Cytoplasm","enzyme",0,0,0,0.08,0.05,0.19,0,0
+"AW551984","von Willebrand factor A domain containing 5A","Nucleus","other",0,0,0.61,0.34,1.79,0.19,0,0
+"Vwa5a","von Willebrand factor A domain containing 5A","Nucleus","other",31.58,42.86,22.42,15.12,32.52,47.8,15.17,11.9
