@@ -437,26 +437,6 @@ def process_df(workbook):
     return lg_rg
 
 
-def get_all_enzymes():
-    HOME = str(Path.home())
-    ec_code_path = '.obo/ec-code/ec-code.obo'
-    if not os.path.exists(os.path.join(HOME, ec_code_path)):
-        _ = pyobo.get_id_name_mapping('ec-code')
-        obo = obonet.read_obo(os.path.join(HOME, ec_code_path))
-    else:
-        obo = obonet.read_obo(os.path.join(HOME, ec_code_path))
-    up_nodes = set()
-    for node in obo.nodes:
-        if node.startswith('uniprot'):
-            up_nodes.add(node[8:])
-    human_ups = {u for u in up_nodes if uniprot_client.is_human(u)}
-    enzymes = {uniprot_client.get_gene_name(u) for u in human_ups}
-    enzymes = {g for g in enzymes if not hgnc_client.is_kinase(g)}
-    enzymes = {g for g in enzymes if not hgnc_client.is_phosphatase(g)}
-    logger.info(f'Filtered {len(enzymes)} enzymes in total')
-    return enzymes
-
-
 def expand_with_child_go_terms(terms):
     all_terms = set(terms)
     for term in terms:
@@ -708,3 +688,14 @@ if __name__ == '__main__':
     cellphonedb_df = pd.DataFrame(dataframe)
     cellphonedb_df.to_csv(os.path.join(HERE, os.pardir, 'output/op_nature_uniprot.csv'),
                           sep=",", index=0)
+
+    '''
+    enzyme_targets = defaultdict(set)
+    for k,v in enzyme_product.items():
+        for p in v:
+            if p in product_targets.keys():
+                for i in product_targets[p]:
+                    enzyme_targets[(k)].add(i)
+
+    logger.info('Enzyme receptor targets: %d' % (len(enzyme_targets)))
+    '''
