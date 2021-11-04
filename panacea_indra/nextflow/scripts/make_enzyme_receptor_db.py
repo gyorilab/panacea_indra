@@ -130,3 +130,14 @@ if __name__ == '__main__':
     stmts_to_filter = {'Complex', 'Activation', 'Inhibition'}
     boolean_series = enzyme_target_df['Interaction'].isin(stmts_to_filter)
     enzyme_target_df = enzyme_target_df[boolean_series]
+
+    '''
+    enzyme_targets = defaultdict(set)
+    for k,v in enzyme_product.items():
+        for p in v:
+            if p in product_targets.keys():
+                for i in product_targets[p]:
+                    enzyme_targets[(k)].add(i)
+
+    logger.info('Enzyme receptor targets: %d' % (len(enzyme_targets)))
+    '''

@@ -4,8 +4,6 @@ import sys
 import csv
 import json
 import tqdm
-import pyobo
-import obonet
 import random
 import pickle
 import logging
@@ -688,14 +686,3 @@ if __name__ == '__main__':
     cellphonedb_df = pd.DataFrame(dataframe)
     cellphonedb_df.to_csv(os.path.join(HERE, os.pardir, 'output/op_nature_uniprot.csv'),
                           sep=",", index=0)
-
-    '''
-    enzyme_targets = defaultdict(set)
-    for k,v in enzyme_product.items():
-        for p in v:
-            if p in product_targets.keys():
-                for i in product_targets[p]:
-                    enzyme_targets[(k)].add(i)
-
-    logger.info('Enzyme receptor targets: %d' % (len(enzyme_targets)))
-    '''
