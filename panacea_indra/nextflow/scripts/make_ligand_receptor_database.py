@@ -511,6 +511,22 @@ def get_ligands():
     return surface_protein_set | ligand_genes_go | manual_ligands
 
 
+def make_interaction_df(indra_op):
+    # Make INDRA_DB interactions dataframe
+    interactions = []
+    for receptor, ligands in indra_op.items():
+        for ligand in ligands:
+            interactions.append(
+                {
+                    'ligands': ligand,
+                    'receptors': receptor,
+                    'interactions': ligand + '_' + receptor
+                }
+            )
+    interaction_df = pd.DataFrame(interactions)
+    return interaction_df
+
+
 def _make_nature_df(nature_interactions):
     # Make nature interactions dataframe
     nature_interactions_df = []
@@ -654,18 +670,11 @@ if __name__ == '__main__':
     
     indra_db_stmts = ac.run_preassembly(indra_db_stmts, run_refinement=False)
     
-    
 
-    # get ligands by receptor for OP
-    #op_receptor_by_ligands = get_receptor_by_ligands(receptor_genes_go,
-    #                                                 full_ligand_set,
-    #                                                 op_filtered)
-    
     # get ligands by receptor for indra_op
-    #indra_op_receptor_by_ligands = get_receptor_by_ligands(receptor_genes_go,
-    #                                                       full_ligand_set,
-    #                                                       indra_op_filtered)
-    
+    indra_op_receptor_by_ligands = get_receptor_by_ligands(receptor_genes_go,
+                                                           full_ligand_set,
+                                                           indra_db_stmts)
     
 
     # Assemble the statements into HTML formatted report and save into a file
@@ -674,70 +683,28 @@ if __name__ == '__main__':
                        fname=(os.path.join(HERE, os.pardir, 'output', 'indra_db_interactions.html')))
 
     nature_interactions = process_nature_paper()
+    indra_db_interactions = make_interaction_df(indra_op_receptor_by_ligands)
 
+    # Create a cellphone db formatted indra_op database
+    indra_op_nature = \
+        [{'partner_a': i.split('_')[0],
+          'partner_b': i.split('_')[1]}
+         for i in set(indra_db_interactions.interactions) | set(nature_interactions.interactions)]
+    indra_op_nature = pd.DataFrame(indra_op_nature)
+    dataframe = []
+    count = 0
+    for r, c in indra_op_nature.iterrows():
+        count += 1
+        if c[0] in up_hgnc and c[1] in up_hgnc:
+            dataframe.append(
+                {
+                    'id_cp_interaction': 'Woolf-' + str(count),
+                    'partner_a': up_hgnc[c[0]],
+                    'partner_b': up_hgnc[c[1]],
+                    'source': 'INDRA'
+                }
+            )
 
-
-
-
-    # Make OP interactions dataframe
-    op_interactions = []
-    for receptors, ligands in op_receptor_by_ligands.items():
-        for lg in ligands:
-            op_interactions.append(
-            {
-                'ligands':lg,
-                'receptors': receptors,
-                'interactions': lg+'_'+receptors
-            }
-        )
-    op_df = pd.DataFrame(op_interactions)
-
-    # Make INDRA_OP interactions dataframe
-    indra_op_interactions = []
-    for receptors, ligands in indra_op_receptor_by_ligands.items():
-        for lg in ligands:
-            indra_op_interactions.append(
-            {
-                'ligands':lg,
-                'receptors': receptors,
-                'interactions': lg+'_'+receptors
-            }
-        )
-    indra_op_df = pd.DataFrame(indra_op_interactions)
-    
-    
-    unique_op_interactions = set(op_df.interactions)
-    unique_nature_interactions = set(nature_interactions_df.interactions)
-    unique_indra_op_interactions = set(indra_op_df.interactions)
-
-    # Nature and OP interactions only
-    unique_op_nature_interactions = unique_op_interactions | unique_nature_interactions
-
-    logger.info('Total OP interactions: %d'% len(unique_op_interactions))
-    logger.info('Total Nature interactions: %d'% len(unique_nature_interactions))
-    logger.info('Total OP and Nature interactions: %d'% len(unique_op_nature_interactions))
-
-    merge_interactions(unique_op_nature_interactions, 'op_nature_genes.csv', 'op_nature_uniprot.csv')
-
-
-    # Nature and INDRA_OP interactions only
-    unique_indra_op_nature_interactions = unique_indra_op_interactions | unique_nature_interactions
-
-    logger.info('Total INDRA_OP interactions: %d'% len(unique_indra_op_interactions))
-    logger.info('Total Nature interactions: %d'% len(unique_nature_interactions))
-    logger.info('Total INDRA_OP and Nature interactions: %d'% len(unique_indra_op_nature_interactions))
-
-    merge_interactions(unique_indra_op_nature_interactions, 'indra_op_nature_genes.csv', 'indra_op_nature_uniprot.csv')
-
-
-
-    ######## Checking for OP specific and common interaction b/w Nature and OP
-    #common_op_nature_interaction = set(op_df.interactions) & set(nature_df.interactions)
-    #common_op_nature_interaction = pd.DataFrame([{'interactions':i} for i in common_op_nature_interaction])
-    #common_op_nature_interaction.to_csv(os.path.join(wd, 'output/common_op_nature_interaction.csv'), 
-    #                 sep=",", index=0)
-
-    #op_specific = set(op_df.interactions) - set(nature_df.interactions)
-    #op_specific = pd.DataFrame([{'interactions':i} for i in op_specific])
-    #op_specific.to_csv(os.path.join(wd, 'output/op_specific.csv'), 
-    #                 sep=",", index=0)
+    cellphonedb_df = pd.DataFrame(dataframe)
+    cellphonedb_df.to_csv(os.path.join(HERE, os.pardir, 'output/op_nature_uniprot.csv'),
+                          sep=",", index=0)
