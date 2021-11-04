@@ -340,9 +340,6 @@ def get_de_product_list(de_enzyme_product_list,
         return de_enzyme_product_list
 
 
-
-
-
 def filter_incorrect_curations(stmts):
     # Filter incorrect curations
     indra_op_filtered = ac.filter_by_curation(stmts,
@@ -515,31 +512,29 @@ def get_ligands():
 
 
 def process_nature_paper():
-    nature_interactions = process_df(os.path.join(INPUT, 'ncomms8866-s3.xlsx'))
-    custom_interactome = defaultdict(set)
-    
-    for r,c in nature_interactions.iterrows():
-        custom_interactome[(c[0])].add(c[1])
+    nature_xlsx = process_df(os.path.join(INPUT, 'ncomms8866-s3.xlsx'))
+    nature_lg_by_rg = defaultdict(set)
         
     nature_dataframe = []
-    count=0
+    count = 0
 
-    for r,c in nature_interactions.iterrows():
-        count+=1
-        if c[0] in up_hgnc and c[1] in up_hgnc:
+    for rows, cols in nature_xlsx.iterrows():
+        nature_lg_by_rg[(cols[0])].add(cols[1])
+        count += 1
+        if cols[0] in up_hgnc and cols[1] in up_hgnc:
             nature_dataframe.append(
                 {
                     'id_cp_interaction':'NATURE-'+str(count),
-                    'partner_a': up_hgnc[c[0]],
-                    'partner_b': up_hgnc[c[1]],
+                    'partner_a': up_hgnc[cols[0]],
+                    'partner_b': up_hgnc[cols[1]],
                     'source':'NATURE'
                 }
             )
 
     nature_dataframe = pd.DataFrame(nature_dataframe)
-    nature_dataframe.to_csv(os.path.join(wd, 'output/nature_uniprot.csv'), 
+    nature_dataframe.to_csv(os.path.join(HERE, os.pardir, 'output', 'nature_uniprot.csv'),
                             sep=",", index=0)
-    return nature_interactions
+    return nature_xlsx
     
     
 def merge_interactions(interactions, genes_file, uniprot_file):
@@ -595,6 +590,7 @@ if __name__ == '__main__':
     # Fetch omnipath database biomolecular interactions and
     # process them into INDRA statements
     op = process_from_web()
+    logger.info('Total OP statements %d' % (len(op.statements)))
 
     # Filter statements which are not ligands/receptors from
     # OmniPath database
@@ -637,41 +633,29 @@ if __name__ == '__main__':
     indra_db_stmts = filter_complex_statements(indra_db_stmts,
                                                full_ligand_set,
                                                receptor_genes_go)
+    logger.info('Statements after filtering out complex: %d' % (len(indra_db_stmts)))
     
     indra_db_stmts = ac.run_preassembly(indra_db_stmts, run_refinement=False)
     
     
 
     # get ligands by receptor for OP
-    op_receptor_by_ligands = get_receptor_by_ligands(receptor_genes_go, 
-                                                     full_ligand_set, 
-                                                     op_filtered)
+    #op_receptor_by_ligands = get_receptor_by_ligands(receptor_genes_go,
+    #                                                 full_ligand_set,
+    #                                                 op_filtered)
     
     # get ligands by receptor for indra_op
-    indra_op_receptor_by_ligands = get_receptor_by_ligands(receptor_genes_go, 
-                                                           full_ligand_set, 
-                                                           indra_op_filtered)
+    #indra_op_receptor_by_ligands = get_receptor_by_ligands(receptor_genes_go,
+    #                                                       full_ligand_set,
+    #                                                       indra_op_filtered)
     
     
 
     # Assemble the statements into HTML formatted report and save into a file
-    op_html_report = \
-        html_assembler(
-            op_filtered,
-            fname=os.path.join(wd, 'op_interactions.html'))
-    
-    indra_op_html_report = \
-            html_assembler(
-                indra_op_filtered,
-                fname=os.path.join(wd, 'indra_op_interactions.html'))
-    
-    indra_op_html_report = \
-            html_assembler(
-                indra_db_stmts,
-                fname=os.path.join(wd, 'indra_db_interactions.html'))
-    
-    
-    
+    indra_db_html_report = \
+        html_assembler(indra_db_stmts,
+                       fname=(os.path.join(HERE, os.pardir, 'output', 'indra_db_interactions.html')))
+
     nature_interactions = process_nature_paper()
 
 
