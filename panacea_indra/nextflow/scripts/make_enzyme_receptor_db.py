@@ -25,18 +25,6 @@ GO_ANNOTATIONS = os.path.join(INPUT, 'goa_human.gaf')
 ION_CHANNELS = os.path.join(INPUT, 'ion_channels.txt')
 
 
-def download_statements(hashes):
-    """Download the INDRA Statements corresponding to a set of hashes.
-    """
-    stmts_by_hash = {}
-    for group in tqdm.tqdm(batch_iter(hashes, 200), total=int(len(hashes) / 200)):
-        idbp = indra_db_rest.get_statements_by_hash(list(group),
-                                                    ev_limit=10)
-        for stmt in idbp.statements:
-            stmts_by_hash[stmt.get_hash()] = stmt
-    return stmts_by_hash
-
-
 def get_all_enzymes():
     HOME = str(Path.home())
     ec_code_path = '.obo/ec-code/ec-code.obo'
@@ -66,14 +54,15 @@ def load_indra_df(fname):
     return df
 
 
-def filter_sparser(stmts):
-    new_stmts = []
-    for stmt in stmts:
+def filter_sparser(hashes):
+    stmts = indra_db_rest.get_statements_by_hash(hashes,
+                                                 ev_limit=10)
+    for stmt in stmts.statements:
         sources = {ev.source_api for ev in stmt.evidence}
         if len(sources) == 1 and 'sparser' in sources:
-            continue
-        new_stmts.append(stmt)
-    return new_stmts
+            return True
+        else:
+            return False
 
 
 # Load the INDRA DB DF
@@ -120,9 +109,7 @@ if __name__ == '__main__':
                                        indra_df.stmt_hash,
                                        indra_df.evidence_count):
         if a in products and b in receptors_genes_go:
-            stmt = download_statements([hs])
-            filtered_stmt = filter_sparser(set(stmt.values()))
-            if filtered_stmt:
+            if not filter_sparser([hs]):
                 product_targets[(a)].add(b)
                 enzyme_target_df.append(
                     {
