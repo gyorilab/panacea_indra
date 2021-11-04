@@ -54,7 +54,7 @@ up_hgnc = {v: k for k, v in um.uniprot_gene_name.items()
 
 db_curations = get_curations()
 
-__file__ = '/Users/sbunga/gitHub/panacea_indra/panacea_indra/nextflow/scripts/make_ligand_receptor_database.py'
+#__file__ = '/Users/sbunga/gitHub/panacea_indra/panacea_indra/nextflow/scripts/make_ligand_receptor_database.py'
 HERE = os.path.dirname(os.path.abspath(__file__))
 INPUT = os.path.join(HERE, os.pardir, 'input')
 OUTPUT = os.path.join(HERE, os.pardir, 'output')

@@ -16,7 +16,7 @@ from make_ligand_receptor_database import get_receptors
 
 logger = logging.getLogger('Enzyme Product Interactome')
 
-__file__ = '/Users/sbunga/gitHub/panacea_indra/panacea_indra/nextflow/scripts/make_enzyme_receptor_db.py'
+#__file__ = '/Users/sbunga/gitHub/panacea_indra/panacea_indra/nextflow/scripts/make_enzyme_receptor_db.py'
 HERE = os.path.dirname(os.path.abspath(__file__))
 INPUT = os.path.join(HERE, os.pardir, 'input')
 OUTPUT = os.path.join(HERE, os.pardir, 'output')
