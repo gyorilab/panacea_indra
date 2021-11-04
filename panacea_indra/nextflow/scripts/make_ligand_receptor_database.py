@@ -43,6 +43,7 @@ from indra.databases import uniprot_client, hgnc_client
 from indra_db.client.principal.curation import get_curations
 from indra.databases.hgnc_client import get_hgnc_from_mouse, get_hgnc_name
 
+
 logger = logging.getLogger('receptor_ligand_interactions')
 
 mouse_gene_name_to_mgi = {v: um.uniprot_mgi.get(k)
@@ -55,10 +56,7 @@ up_hgnc = {v: k for k, v in um.uniprot_gene_name.items()
 
 db_curations = get_curations()
 
-
-
-
-__file__ = "/Users/sbunga/gitHub/panacea_indra/panacea_indra/nextflow/scripts/temp.ipynb"
+__file__ = '/Users/sbunga/gitHub/panacea_indra/panacea_indra/nextflow/scripts/make_ligand_receptor_database.py'
 HERE = os.path.dirname(os.path.abspath(__file__))
 INPUT = os.path.join(HERE, os.pardir, 'input')
 OUTPUT = os.path.join(HERE, os.pardir, 'output')
@@ -477,6 +475,8 @@ def get_receptors():
     receptor_go_ids = expand_with_child_go_terms(receptor_go_ids)
     # Filtering out the nuclear receptors from the receptor list
     receptor_go_ids = {r for r in receptor_go_ids if 'receptor' in
+                       bio_ontology.get_name('GO', r) or 'sensor' in
+                       bio_ontology.get_name('GO', r) or 'channel' in
                        bio_ontology.get_name('GO', r)} - \
                       expand_with_child_go_terms(['GO:0004879'])
     receptor_genes_go = get_genes_for_go_ids(receptor_go_ids)
@@ -570,10 +570,9 @@ def merge_interactions(interactions, genes_file, uniprot_file):
     cellphonedb_df = pd.DataFrame(cellphonedb_df)
     cellphonedb_df.to_csv(os.path.join(wd, 'output', uniprot_file), 
                           sep=",", index=0)
-    
+
+
 if __name__ == '__main__':
-    
-    wd = '/Users/sbunga/gitHub/panacea_indra/panacea_indra/nextflow'
     receptor_genes_go = get_receptors()
     # remove all the receptors from the surface_protein_set
     full_ligand_set = get_ligands() - receptor_genes_go
