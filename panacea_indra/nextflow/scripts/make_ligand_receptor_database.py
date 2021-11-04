@@ -511,6 +511,22 @@ def get_ligands():
     return surface_protein_set | ligand_genes_go | manual_ligands
 
 
+def _make_nature_df(nature_interactions):
+    # Make nature interactions dataframe
+    nature_interactions_df = []
+    for rows, cols in nature_interactions.iterrows():
+        nature_interactions_df.append(
+        {
+            'ligands': cols[0],
+            'receptors': cols[1],
+            'interactions': cols[0]+'_'+cols[1]
+
+        }
+    )
+    nature_interactions_df = pd.DataFrame(nature_interactions_df)
+    return nature_interactions_df
+
+
 def process_nature_paper():
     nature_xlsx = process_df(os.path.join(INPUT, 'ncomms8866-s3.xlsx'))
     nature_lg_by_rg = defaultdict(set)
@@ -527,14 +543,15 @@ def process_nature_paper():
                     'id_cp_interaction':'NATURE-'+str(count),
                     'partner_a': up_hgnc[cols[0]],
                     'partner_b': up_hgnc[cols[1]],
-                    'source':'NATURE'
+                    'source': 'NATURE'
                 }
             )
 
     nature_dataframe = pd.DataFrame(nature_dataframe)
+
     nature_dataframe.to_csv(os.path.join(HERE, os.pardir, 'output', 'nature_uniprot.csv'),
                             sep=",", index=0)
-    return nature_xlsx
+    return _make_nature_df(nature_xlsx)
     
     
 def merge_interactions(interactions, genes_file, uniprot_file):
@@ -659,18 +676,7 @@ if __name__ == '__main__':
     nature_interactions = process_nature_paper()
 
 
-    # Make nature interactions dataframe
-    nature_interactions_df = []
-    for r,c in nature_interactions.iterrows():
-        nature_interactions_df.append(
-        {
-            'ligands': c[0],
-            'receptors': c[1],
-            'interactions': c[0]+'_'+c[1]
 
-        }
-    )
-    nature_interactions_df = pd.DataFrame(nature_interactions_df)
 
 
     # Make OP interactions dataframe
