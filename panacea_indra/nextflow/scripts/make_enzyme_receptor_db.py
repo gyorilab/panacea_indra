@@ -55,14 +55,27 @@ def load_indra_df(fname):
 
 
 def filter_sparser(hashes):
-    stmts = indra_db_rest.get_statements_by_hash(hashes,
-                                                 ev_limit=10)
-    for stmt in stmts.statements:
-        sources = {ev.source_api for ev in stmt.evidence}
-        if len(sources) == 1 and 'sparser' in sources:
-            return True
-        else:
-            return False
+    filtered_hashes = set()
+    for hash, stmts in hashes.items():
+        for stmt in {stmts}:
+            sources = {ev.source_api for ev in stmt.evidence}
+            if len(sources) == 1 and 'sparser' in sources:
+                continue
+            else:
+                filtered_hashes.add(hash)
+    return filtered_hashes
+
+
+def download_statements(hashes):
+    """Download the INDRA Statements corresponding to a set of hashes.
+    """
+    stmts_by_hash = {}
+    for group in tqdm.tqdm(batch_iter(hashes, 200), total=int(len(hashes) / 200)):
+        idbp = indra_db_rest.get_statements_by_hash(list(group),
+                                                    ev_limit=10)
+        for stmt in idbp.statements:
+            stmts_by_hash[stmt.get_hash()] = stmt
+    return stmts_by_hash
 
 
 # Load the INDRA DB DF
@@ -109,27 +122,34 @@ if __name__ == '__main__':
                                        indra_df.stmt_hash,
                                        indra_df.evidence_count):
         if a in products and b in receptors_genes_go:
-            if not filter_sparser([hs]):
-                product_targets[(a)].add(b)
-                enzyme_target_df.append(
-                    {
-                        'Enzyme': (enzyme_product[a]),
-                        'Product': a,
-                        'Interaction': stmt_type,
-                        'Receptor': b,
-                        'Enzyme_count': len(enzyme_product[a]),
-                        'Evidence_count': ec,
-                        'Statement_hash': hs
-
-                    }
-                )
-
+            product_targets[(a)].add(b)
+            enzyme_target_df.append(
+                {
+                    'Enzyme': (enzyme_product[a]),
+                    'Product': a,
+                    'Interaction': stmt_type,
+                    'Receptor': b,
+                    'Enzyme_count': len(enzyme_product[a]),
+                    'Evidence_count': ec,
+                    'Statement_hash': hs
+                }
+            )
     logger.info('Enzyme-products receptor targets: %d' % (len(product_targets)))
 
     enzyme_target_df = pd.DataFrame(enzyme_target_df)
     stmts_to_filter = {'Complex', 'Activation', 'Inhibition'}
     boolean_series = enzyme_target_df['Interaction'].isin(stmts_to_filter)
     enzyme_target_df = enzyme_target_df[boolean_series]
+
+    # download statements
+    stmts_hash = download_statements(set.union(set(enzyme_target_df.Statement_hash)))
+    # filter out sparser hashes
+    filtered_hashes = filter_sparser(stmts_hash)
+    # Filter out only sparser statements
+    filtered_enzyme_target_df = \
+        enzyme_target_df[enzyme_target_df['Statement_hash'].isin(filtered_hashes)]
+    logger.info('Total final statements: %d' % (len(filtered_enzyme_target_df)))
+    filtered_enzyme_target_df.to_csv(os.path.join(HERE, os.pardir, 'output/enzyme_product_target.cxv'))
 
     '''
     enzyme_targets = defaultdict(set)
