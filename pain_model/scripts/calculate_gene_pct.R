@@ -36,7 +36,6 @@ enriched_genes <- enriched_genes[, c(4, 1, 2, 3)]
 # Visual cortex data
 vis_cortex <- read.csv('./data/Primary_mouse/visual_cortex/GSE71585_RefSeq_TPM.csv')
 vis_cortex_meta <- read.csv('./data/Primary_mouse/visual_cortex/GSE71585_Clustering_Results.csv')
-
 vis_cortex <- vis_cortex %>% column_to_rownames('gene')
 vis_cortex <- CreateSeuratObject(vis_cortex)
 vis_cortex$cell_type <- vis_cortex_meta$primary_type
@@ -80,5 +79,19 @@ write.csv(mheart_enriched_mat, './output/gene_pct_heart_clusters.csv',
           row.names = F)  
 
 # Motor cortex
-mcortex <- Read10X('./data/Primary_mouse/motor_cortex/', 
-                   gene.column = 2)
+#mcortex <- Read10X('./data/Primary_mouse/motor_cortex/', 
+#                   gene.column = 2)
+mcortex <- readRDS('./data/Primary_mouse/motor_cortex/mcortex.Rds')
+cluster_memb <- read.csv('./data/Primary_mouse/motor_cortex/cluster.membership.csv')
+meta_file <- read.csv('./data/Primary_mouse/motor_cortex/cluster.annotation.csv')
+colnames(cluster_memb)[2] <- 'cluster_id'
+#meta_file$cluster_label
+cluster_memb <- merge(cluster_memb, meta_file, by.x = 'cluster_id') 
+# Subset the cells based on the meta file
+#mcortex$X <- colnames(mcortex)
+#mcortex <- mcortex[, mcortex$X %in% cluster_memb$X]
+
+mcortex@meta.data = merge(mcortex@meta.data, cluster_memb, by = 'X')
+colnames(mcortex@meta.data)[6] <- 'cell_type'
+rownames(mcortex@meta.data) <- mcortex@meta.data$X
+mcortex_enriched_mat <- calculate_pct(mcortex, enriched_genes)

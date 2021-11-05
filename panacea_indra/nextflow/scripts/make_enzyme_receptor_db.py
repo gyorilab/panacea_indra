@@ -150,7 +150,7 @@ if __name__ == '__main__':
     filtered_enzyme_target_df = \
         enzyme_target_df[enzyme_target_df['Statement_hash'].isin(filtered_hashes)]
     logger.info('Total final statements: %d' % (len(filtered_enzyme_target_df)))
-    filtered_enzyme_target_df.to_csv(os.path.join(HERE, os.pardir, 'output/enzyme_product_target.cxv'))
+    filtered_enzyme_target_df.to_csv(os.path.join(HERE, os.pardir, 'output/enzyme_product_target.csv'))
 
     '''
     enzyme_targets = defaultdict(set)
