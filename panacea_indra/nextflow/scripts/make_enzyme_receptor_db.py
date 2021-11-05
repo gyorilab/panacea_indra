@@ -83,6 +83,7 @@ indra_df = load_indra_df(INDRA_DB_PKL)
 
 
 if __name__ == '__main__':
+    # get receptors
     receptors_genes_go = get_receptors()
     # Enzyme product interactions
     PC_SIF_URL = ('https://www.pathwaycommons.org/archives/PC2/v12/'
@@ -137,7 +138,7 @@ if __name__ == '__main__':
     logger.info('Enzyme-products receptor targets: %d' % (len(product_targets)))
 
     enzyme_target_df = pd.DataFrame(enzyme_target_df)
-    stmts_to_filter = {'Complex', 'Activation', 'Inhibition'}
+    stmts_to_filter = {'Complex', 'Activation'}
     boolean_series = enzyme_target_df['Interaction'].isin(stmts_to_filter)
     enzyme_target_df = enzyme_target_df[boolean_series]
 
