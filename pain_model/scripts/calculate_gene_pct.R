@@ -95,3 +95,5 @@ mcortex@meta.data = merge(mcortex@meta.data, cluster_memb, by = 'X')
 colnames(mcortex@meta.data)[6] <- 'cell_type'
 rownames(mcortex@meta.data) <- mcortex@meta.data$X
 mcortex_enriched_mat <- calculate_pct(mcortex, enriched_genes)
+write.csv(mcortex_enriched_mat, './output/gene_pct_cortex_clusters.csv',
+          row.names = F)
