@@ -97,3 +97,22 @@ rownames(mcortex@meta.data) <- mcortex@meta.data$X
 mcortex_enriched_mat <- calculate_pct(mcortex, enriched_genes)
 write.csv(mcortex_enriched_mat, './output/gene_pct_cortex_clusters.csv',
           row.names = F)
+
+# Mouse motor neurons
+mneurons <- read.csv('./data/Primary_mouse/mMotor_neurons/GSE103892_Expression_Count_Matrix.txt.gz',
+                     sep='\t')
+annot <- read.csv('./data/Primary_mouse/mMotor_neurons/GSE103892_Sample_Cell_Cluster_Information.txt',
+                  sep='\t')
+rownames(mneurons) <- mneurons$Gene
+mneurons$Gene <- NULL
+mneurons <- CreateSeuratObject(mneurons)
+
+View(mneurons@meta.data)
+mneurons$sample_cellbarcode <- rownames(mneurons@meta.data)
+mneurons@meta.data <- merge(mneurons@meta.data, annot, by='sample_cellbarcode')
+rownames(mneurons@meta.data) <- mneurons@meta.data$sample_cellbarcode
+colnames(mneurons@meta.data)[9] <- 'cell_type'
+
+mneurons_enriched_mat <- calculate_pct(mneurons, enriched_genes)
+write.csv(mcortex_enriched_mat, './output/gene_pct_motor_neuron_clusters.csv',
+          row.names = F)

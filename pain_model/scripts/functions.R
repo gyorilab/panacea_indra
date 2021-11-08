@@ -2,7 +2,7 @@ calculate_pct <- function(obj, enriched_genes){
   
   # Subsetting the obj object and extracting the cells
   # from each cluster
-  obj@meta.data$cell_type[obj@meta.data$cell_type == ''] = 'NA'
+  obj@meta.data$cell_type[obj@meta.data$cell_type == ''] = 'Unknown'
   all_cell_types <- names(table(obj@meta.data$cell_type))
   all_clusters = list()
   
