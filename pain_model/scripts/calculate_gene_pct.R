@@ -114,5 +114,7 @@ rownames(mneurons@meta.data) <- mneurons@meta.data$sample_cellbarcode
 colnames(mneurons@meta.data)[9] <- 'cell_type'
 
 mneurons_enriched_mat <- calculate_pct(mneurons, enriched_genes)
-write.csv(mcortex_enriched_mat, './output/gene_pct_motor_neuron_clusters.csv',
+write.csv(mneurons_enriched_mat, './output/gene_pct_motor_neuron_clusters.csv',
           row.names = F)
+
+
