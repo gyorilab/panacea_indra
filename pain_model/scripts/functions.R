@@ -1,3 +1,24 @@
+
+get_enriched_genes <- function(){
+  wd <- ('/Users/sbunga/gitHub/panacea_indra/pain_model/')
+  setwd(wd)
+  
+  human_mouse <- read.csv('./data/human_mouse_orth.txt', sep='\t')
+  colnames(human_mouse) <- c('HUMAN_SYMBOL', 'MOUSE_SYMBOL')
+  
+  df <- readxl::read_xlsx(paste0(wd, 'data/Primary_mouse/other/mouse_10-fold_high_genes_expression_matrix.xlsx'))
+  enriched_genes <- df[,c(1,2,3,4)]
+  colnames(enriched_genes) <- c('HUMAN_SYMBOL', 'Description', 'Subcellular_localization',
+                                'Functional_type_of_protein')
+  enriched_genes  <- merge(enriched_genes, human_mouse, by.y ='HUMAN_SYMBOL')
+  enriched_genes <- enriched_genes[!enriched_genes[ , 5] == '', ]
+  enriched_genes <- enriched_genes[!duplicated(enriched_genes$MOUSE_SYMBOL), ]
+  enriched_genes$HUMAN_SYMBOL <- NULL
+  enriched_genes <- enriched_genes[, c(4, 1, 2, 3)]
+  return(enriched_genes)
+}
+
+
 calculate_pct <- function(obj, enriched_genes){
   
   # Subsetting the obj object and extracting the cells
