@@ -34,10 +34,10 @@ for r,c in phospho_df.iterrows():
         }
     else:
         df[c[2]]['Site Position'].append(c[4])
-        df[c[2]]['Motif'].append(c[4])
-        df[c[2]]['Brain_131_sn scaled'].append(c[4])
-        df[c[2]]['Heart_131c_sn scaled'].append(c[4])
-        df[c[2]]['Spinal cord_132n_sn scaled'].append(c[4])
+        df[c[2]]['Motif'].append(c[5])
+        df[c[2]]['Brain_131_sn scaled'].append(c[57])
+        df[c[2]]['Heart_131c_sn scaled'].append(c[58])
+        df[c[2]]['Spinal cord_132n_sn scaled'].append(c[59])
         df[c[2]]['DRG'].append((c[60] + c[61] + c[62] + c[63]) / 4)
 
 df = pd.DataFrame(df).transpose()
