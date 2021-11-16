@@ -67,7 +67,6 @@ def filter_by_evidence(stmts):
             continue
         else:
             filtered_hashes.add(stmt.get_hash())
-
     return filtered_hashes
 
 

@@ -14,7 +14,6 @@ import networkx
 import itertools
 import numpy as np
 import pandas as pd
-import enzyme_client
 from pathlib import Path
 from matplotlib import rc
 from bioinfokit import visuz
@@ -34,6 +33,7 @@ from indra.assemblers.cx import hub_layout
 from indra.ontology.bio import bio_ontology
 from indra.databases.uniprot_client import um
 from indra.assemblers.html import HtmlAssembler
+#from make_enzyme_receptor_db import get_all_enzymes
 from indra.statements.agent import default_ns_order
 from indra.sources.omnipath import process_from_web
 from indra.assemblers.cx.assembler import CxAssembler
@@ -319,8 +319,6 @@ def process_seurat_csv(infile, fc):
     filtered_dict = {}
     for r, c in filtered_df.iterrows():
         filtered_dict[c[1]] = c[0]
-    # Volcano plot of DE genes
-    _plot_de_genes(l_df)
     # return set(filtered_markers)
     return filtered_dict
 
@@ -374,55 +372,6 @@ def mgi_to_hgnc_name(gene_list):
         hgnc_id = get_hgnc_from_mouse(mgi_id)
         hgnc_gene_set.add(get_hgnc_name(hgnc_id))
     return hgnc_gene_set
-
-
-def create_interaction_digraph(ligand_receptors,
-                               sorted_enzyme_FC,
-                               fname):
-    '''
-    This function takes two dictionaries as input,
-    ligand receptors and enzyme fold change and creates
-    a interaction Digraph of ligands, enzymes and receptors.
-
-    Parameters
-    ----------
-    celtype_stmts : Optional[list[indra.statements.Statement]]
-        A list of INDRA Statements to be assembled.
-    network_name : Optional[str]
-        The name of the network to be assembled. Default: indra_assembled
-
-    Attributes
-    ----------
-    ligands_dict : dict
-        Dict of foldchange and ligands as keys and receptors as values
-    enzyme dict : dict
-        Dict of foldchange as keys and enzymes as values
-    fname : str
-        output file name
-    '''
-
-    ligand_receptors = dict(sorted(ligand_receptors.items(),
-                                   reverse=True))
-    G = networkx.DiGraph()
-
-    top_lg_rc = dict(sorted(itertools.islice(ligand_receptors.items(), 10)))
-    top_en = dict(itertools.islice(sorted_enzyme_FC.items(), 10))
-
-    for FC_lg, rcs in top_lg_rc.items():
-        for rc in rcs:
-            G.add_node(FC_lg[1], color='green')
-            G.add_edge(FC_lg[1], rc, label="{:.2f}".format(FC_lg[0]))
-    for en_FC, en in top_en.items():
-        for chem in enzyme_product_dict[en]:
-            for rcs in products_receptors[chem]:
-                G.add_node(en, color='red')
-                G.add_edge(en, chem, label="{:.2f}".format(en_FC))
-                G.add_edge(chem, rcs)
-
-    G.graph.setdefault('graph', {})['rankdir'] = 'LR'
-    ag = networkx.nx_agraph.to_agraph(G)
-    fname = os.path.join(OUTPUT, fname + "interactions_digraph.pdf")
-    ag.draw(fname, prog='dot')
 
 
 def process_df(workbook):
@@ -483,8 +432,6 @@ def get_ligands():
 
     # Converting GO id's to gene symbols
     ligand_genes_go = get_genes_for_go_ids(ligand_go_ids)
-    # Remove one more nuclear receptor
-    #manual_ligands = {'THBS1'}
     manual_ligands = set()
     return surface_protein_set | ligand_genes_go | manual_ligands
 
@@ -555,7 +502,7 @@ def merge_interactions(interactions, genes_file, uniprot_file):
           for i in interactions]
 
     interactions_hgnc = pd.DataFrame(df)
-    interactions_hgnc.to_csv(os.path.join(wd, 'output', genes_file), 
+    interactions_hgnc.to_csv(os.path.join(HERE, 'output', genes_file),
                              sep=",", index=0)
     
 
@@ -574,7 +521,7 @@ def merge_interactions(interactions, genes_file, uniprot_file):
             )
 
     cellphonedb_df = pd.DataFrame(cellphonedb_df)
-    cellphonedb_df.to_csv(os.path.join(wd, 'output', uniprot_file), 
+    cellphonedb_df.to_csv(os.path.join(HERE, 'output', uniprot_file),
                           sep=",", index=0)
 
 
@@ -582,7 +529,6 @@ if __name__ == '__main__':
     receptor_genes_go = get_receptors()
     # remove all the receptors from the surface_protein_set
     full_ligand_set = get_ligands() - receptor_genes_go
-
     # Now get INDRA DB Statements for the receptor-ligand pairs
     hashes_by_gene_pair = get_hashes_by_gene_pair(indra_df, full_ligand_set,
                                                   receptor_genes_go)
@@ -596,7 +542,6 @@ if __name__ == '__main__':
     
     # Filtering out the indirect INDRA statements
     indra_db_stmts = ac.filter_direct(indra_db_stmts)
-            
 
     # Fetch omnipath database biomolecular interactions and
     # process them into INDRA statements
@@ -609,11 +554,9 @@ if __name__ == '__main__':
                                   receptor_genes_go)
     op_filtered = ac.filter_direct(op_filtered)
 
-
     op_filtered = ac.filter_by_curation(op_filtered,
                                         curations=db_curations)
-    
-    
+
     # Merge omnipath/INDRA statements and run assembly
     indra_op_stmts = ac.run_preassembly(indra_db_stmts + op_filtered,
                                         run_refinement=False)
@@ -629,7 +572,6 @@ if __name__ == '__main__':
     # end up with more duplicates
     indra_op_filtered = ac.run_preassembly(indra_op_filtered,
                                            run_refinement=False)
-        
 
     # Filter complex OP statements
     op_filtered = filter_complex_statements(op_filtered,
@@ -647,13 +589,11 @@ if __name__ == '__main__':
     logger.info('Statements after filtering out complex: %d' % (len(indra_db_stmts)))
     
     indra_db_stmts = ac.run_preassembly(indra_db_stmts, run_refinement=False)
-    
 
     # get ligands by receptor for indra_op
     indra_op_receptor_by_ligands = get_receptor_by_ligands(receptor_genes_go,
                                                            full_ligand_set,
                                                            indra_db_stmts)
-    
 
     # Assemble the statements into HTML formatted report and save into a file
     indra_db_html_report = \
@@ -669,12 +609,12 @@ if __name__ == '__main__':
           'partner_b': i.split('_')[1]}
          for i in set(indra_db_interactions.interactions) | set(nature_interactions.interactions)]
     indra_op_nature = pd.DataFrame(indra_op_nature)
-    dataframe = []
+    indra_op_nature_df = []
     count = 0
     for r, c in indra_op_nature.iterrows():
         count += 1
         if c[0] in up_hgnc and c[1] in up_hgnc:
-            dataframe.append(
+            indra_op_nature_df.append(
                 {
                     'id_cp_interaction': 'Woolf-' + str(count),
                     'partner_a': up_hgnc[c[0]],
@@ -682,7 +622,6 @@ if __name__ == '__main__':
                     'source': 'INDRA'
                 }
             )
-
-    cellphonedb_df = pd.DataFrame(dataframe)
-    cellphonedb_df.to_csv(os.path.join(HERE, os.pardir, 'output/op_nature_uniprot.csv'),
+    cellphonedb_df = pd.DataFrame(indra_op_nature_df)
+    cellphonedb_df.to_csv(os.path.join(HERE, os.pardir, 'output/indra_op_nature_uniprot.csv'),
                           sep=",", index=0)
