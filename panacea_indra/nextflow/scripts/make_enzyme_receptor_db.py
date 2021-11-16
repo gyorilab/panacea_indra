@@ -9,6 +9,7 @@ from pathlib import Path
 from indra.util import batch_iter
 from collections import defaultdict
 from indra.sources import indra_db_rest
+import indra.tools.assemble_corpus as ac
 from indra.ontology.bio import bio_ontology
 from indra.databases.uniprot_client import um
 from indra.databases import uniprot_client, hgnc_client
@@ -54,15 +55,19 @@ def load_indra_df(fname):
     return df
 
 
-def filter_sparser(hashes):
+def filter_by_evidence(stmts):
     filtered_hashes = set()
-    for hash, stmts in hashes.items():
-        for stmt in {stmts}:
-            sources = {ev.source_api for ev in stmt.evidence}
-            if len(sources) == 1 and 'sparser' in sources:
-                continue
-            else:
-                filtered_hashes.add(hash)
+    readers = {'medscan', 'eidos', 'reach',
+               'rlimsp', 'trips', 'sparser'}
+    for stmt in stmts:
+        sources = [ev.source_api for ev in stmt.evidence]
+        evidence = len(stmt.evidence)
+
+        if evidence <= 2 and set(sources) <= readers:
+            continue
+        else:
+            filtered_hashes.add(stmt.get_hash())
+
     return filtered_hashes
 
 
@@ -72,7 +77,7 @@ def download_statements(hashes):
     stmts_by_hash = {}
     for group in tqdm.tqdm(batch_iter(hashes, 200), total=int(len(hashes) / 200)):
         idbp = indra_db_rest.get_statements_by_hash(list(group),
-                                                    ev_limit=10)
+                                                    ev_limit=100)
         for stmt in idbp.statements:
             stmts_by_hash[stmt.get_hash()] = stmt
     return stmts_by_hash
@@ -123,6 +128,7 @@ if __name__ == '__main__':
                                        indra_df.stmt_hash,
                                        indra_df.evidence_count):
         if a in products and b in receptors_genes_go:
+
             product_targets[(a)].add(b)
             enzyme_target_df.append(
                 {
@@ -144,21 +150,34 @@ if __name__ == '__main__':
 
     # download statements
     stmts_hash = download_statements(set.union(set(enzyme_target_df.Statement_hash)))
+    # filter to direct statements
+    stmts = ac.filter_direct(stmts_hash.values())
     # filter out sparser hashes
-    filtered_hashes = filter_sparser(stmts_hash)
-    # Filter out only sparser statements
+    filtered_hashes = filter_by_evidence(stmts)
+
     filtered_enzyme_target_df = \
         enzyme_target_df[enzyme_target_df['Statement_hash'].isin(filtered_hashes)]
+
     logger.info('Total final statements: %d' % (len(filtered_enzyme_target_df)))
     filtered_enzyme_target_df.to_csv(os.path.join(HERE, os.pardir, 'output/enzyme_product_target.csv'))
 
-    '''
-    enzyme_targets = defaultdict(set)
-    for k,v in enzyme_product.items():
-        for p in v:
-            if p in product_targets.keys():
-                for i in product_targets[p]:
-                    enzyme_targets[(k)].add(i)
+    enzyme_receptors = defaultdict(set)
+    for v in filtered_enzyme_target_df.values:
+        enzymes = v[0]
+        receptor = v[3]
+        for e in enzymes:
+            enzyme_receptors[e].add(receptor)
 
-    logger.info('Enzyme receptor targets: %d' % (len(enzyme_targets)))
-    '''
+    # Convert to a dataframe
+    enzyme_receptors_df = []
+    for k, v in enzyme_receptors.items():
+        for receptor in v:
+            enzyme_receptors_df.append(
+                {
+                    'Enzyme': k,
+                    'Receptor': receptor
+                }
+        )
+    enzyme_receptors_df = pd.DataFrame(enzyme_receptors_df)
+    enzyme_receptors_df.to_csv(os.path.join(OUTPUT, 'enzyme_receptor.csv'), index=0)
+
