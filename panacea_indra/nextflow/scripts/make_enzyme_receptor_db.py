@@ -17,13 +17,16 @@ from make_ligand_receptor_database import get_receptors
 
 logger = logging.getLogger('Enzyme Product Interactome')
 
-#__file__ = '/Users/sbunga/gitHub/panacea_indra/panacea_indra/nextflow/scripts/make_enzyme_receptor_db.py'
+__file__ = '/Users/sbunga/gitHub/panacea_indra/panacea_indra/nextflow/scripts/make_enzyme_receptor_db.py'
 HERE = os.path.dirname(os.path.abspath(__file__))
 INPUT = os.path.join(HERE, os.pardir, 'input')
 OUTPUT = os.path.join(HERE, os.pardir, 'output')
 INDRA_DB_PKL = os.path.join(INPUT, 'db_dump_df.pkl')
 GO_ANNOTATIONS = os.path.join(INPUT, 'goa_human.gaf')
 ION_CHANNELS = os.path.join(INPUT, 'ion_channels.txt')
+
+up_hgnc = {v: k for k, v in um.uniprot_gene_name.items()
+           if k in um.uniprot_hgnc}
 
 
 def get_all_enzymes():
@@ -180,3 +183,17 @@ if __name__ == '__main__':
     enzyme_receptors_df = pd.DataFrame(enzyme_receptors_df)
     enzyme_receptors_df.to_csv(os.path.join(OUTPUT, 'enzyme_receptor.csv'), index=0)
 
+    # cellphone db formatted database
+    indra_op_df = []
+    count = 0
+    for v in enzyme_receptors_df.values:
+        count += 1
+        if v[0] in up_hgnc and v[1] in up_hgnc:
+            indra_op_df.append(
+                {
+                    'id_cp_interaction': 'Woolf-' + str(count),
+                    'partner_a': up_hgnc[v[0]],
+                    'partner_b': up_hgnc[v[1]],
+                    'source': 'INDRA_ENZYMES'
+                }
+            )
