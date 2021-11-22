@@ -512,7 +512,7 @@ if __name__ == '__main__':
     all_hashes = set.union(*hashes_by_gene_pair.values())
     # Download the statements by hashes
     stmts_by_hash = download_statements(all_hashes)
-    # get only the list of all the available statemtns
+    # get only the list of all the available statements
     indra_db_stmts = list(stmts_by_hash.values())
 
     # Filtering out the indirect INDRA statements
@@ -553,31 +553,14 @@ if __name__ == '__main__':
     indra_op_filtered = ac.run_preassembly(indra_op_filtered,
                                            run_refinement=False)
 
-    # Filter complex OP statements
-    op_filtered = filter_complex_statements(op_filtered,
-                                            full_ligand_set,
-                                            receptor_genes_go)
-    op_filtered = ac.run_preassembly(op_filtered, run_refinement=False)
-
-    # Filtering indra_db stmts
-    indra_db_stmts = ac.filter_by_curation(indra_db_stmts,
-                                           curations=db_curations)
-
-    indra_db_stmts = filter_complex_statements(indra_db_stmts,
-                                               full_ligand_set,
-                                               receptor_genes_go)
-    logger.info('Statements after filtering out complex: %d' % (len(indra_db_stmts)))
-
-    indra_db_stmts = ac.run_preassembly(indra_db_stmts, run_refinement=False)
-
     # get ligands by receptor for indra_op
     indra_op_receptor_by_ligands = get_receptor_by_ligands(receptor_genes_go,
                                                            full_ligand_set,
-                                                           indra_db_stmts)
+                                                           indra_op_filtered)
 
     # Assemble the statements into HTML formatted report and save into a file
     indra_db_html_report = \
-        html_assembler(indra_db_stmts,
+        html_assembler(indra_op_filtered,
                        fname=(os.path.join(HERE, os.pardir, 'output', 'indra_db_interactions.html')))
 
     nature_interactions = process_nature_paper()
