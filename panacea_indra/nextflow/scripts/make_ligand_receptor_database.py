@@ -512,7 +512,7 @@ def filter_to_complex_statements(stmts, ligands, receptors):
                 if (any(a.name in ligands for a in stmt.members)
                         and any(a.name in receptors for a in stmt.members)):
                     sources = {ev.source_api for ev in stmt.evidence}
-                    evidence = stmt.evidence
+                    evidence = len(stmt.evidence)
                     if len(sources) == 1 and 'sparser' in sources:
                         continue
                     if evidence < 2 and sources <= readers:

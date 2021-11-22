@@ -66,7 +66,7 @@ def filter_by_evidence(stmts):
         sources = [ev.source_api for ev in stmt.evidence]
         evidence = len(stmt.evidence)
 
-        if evidence <= 2 and set(sources) <= readers:
+        if evidence < 2 and set(sources) <= readers:
             continue
         else:
             filtered_hashes.add(stmt.get_hash())
@@ -197,3 +197,6 @@ if __name__ == '__main__':
                     'source': 'INDRA_ENZYMES'
                 }
             )
+
+    enzyme_df = pd.DataFrame(indra_op_df)
+    enzyme_df.to_csv(os.path.join(HERE, os.pardir, 'output/indra_op_enzyme_uniprot.csv'), sep=",", index=False)
