@@ -211,7 +211,7 @@ def filter_complex_statements(stmts, ligands, receptors):
     filtered_stmts = []
     for stmt in stmts:
         if isinstance(stmt, Complex):
-            if len(stmt.members) <= 2:
+            if len(stmt.members) <=2:
                 if (any(a.name in ligands for a in stmt.members)
                         and any(a.name in receptors for a in stmt.members)):
                     filtered_stmts.append(stmt)
@@ -500,6 +500,27 @@ def merge_interactions(interactions, genes_file, uniprot_file):
                           sep=",", index=False)
 
 
+def filter_to_complex_statements(stmts, ligands, receptors):
+    ''' Filter statements to only complex type '''
+
+    readers = {'medscan', 'eidos', 'reach',
+               'rlimsp', 'trips', 'sparser'}
+    filtered_stmts = []
+    for stmt in stmts:
+        if isinstance(stmt, Complex):
+            if len(stmt.members) <= 2:
+                if (any(a.name in ligands for a in stmt.members)
+                        and any(a.name in receptors for a in stmt.members)):
+                    sources = [ev.source_api for ev in stmt.evidence]
+                    evidence = len(sources)
+                    if len(set(sources)) == 1 and 'sparser' in sources:
+                        continue
+                    if evidence < 2 and set(sources) <= readers:
+                        continue
+                    filtered_stmts.append(stmt)
+    return filtered_stmts
+
+
 if __name__ == '__main__':
     receptor_genes_go = get_receptors()
     # remove all the receptors from the surface_protein_set
@@ -543,10 +564,10 @@ if __name__ == '__main__':
     # Filter incorrect curations        
     indra_op_filtered = filter_incorrect_curations(indra_op_stmts)
 
-    # Filter complex statements
-    indra_op_filtered = filter_complex_statements(indra_op_filtered,
-                                                  full_ligand_set,
-                                                  receptor_genes_go)
+    # Filter to complex statements
+    indra_op_filtered = filter_to_complex_statements(indra_op_filtered,
+                                                     full_ligand_set,
+                                                     receptor_genes_go)
 
     # We do this again because when removing complex members, we
     # end up with more duplicates
