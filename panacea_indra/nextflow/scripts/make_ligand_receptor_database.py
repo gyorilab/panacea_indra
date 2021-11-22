@@ -504,7 +504,9 @@ def filter_to_complex_statements(stmts, ligands, receptors):
     ''' Filter statements to only complex type '''
 
     readers = {'medscan', 'eidos', 'reach',
-               'rlimsp', 'trips', 'sparser'}
+               'rlimsp', 'trips', 'sparser',
+               'tees', 'geneways', 'isi'}
+
     filtered_stmts = []
     for stmt in stmts:
         if isinstance(stmt, Complex):
