@@ -537,6 +537,11 @@ if __name__ == '__main__':
 
     # Filtering out the indirect INDRA statements
     indra_db_stmts = ac.filter_direct(indra_db_stmts)
+    logger.info('Total statements after filtering to direct ones %d' % (len(indra_db_stmts)))
+
+    # Filter out the statements to database only
+    indra_db_stmts = filter_db_only(indra_db_stmts)
+    logger.info('Total statements after filtering to database only %d' % (len(indra_db_stmts)))
 
     # Fetch omnipath database biomolecular interactions and
     # process them into INDRA statements
