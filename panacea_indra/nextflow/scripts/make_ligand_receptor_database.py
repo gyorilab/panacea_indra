@@ -1,40 +1,20 @@
 import os
-import re
 import sys
-import csv
-import json
 import tqdm
-import random
 import pickle
 import logging
-import graphviz
 import datetime
 import openpyxl
-import networkx
-import itertools
-import numpy as np
 import pandas as pd
-from pathlib import Path
-from matplotlib import rc
-from bioinfokit import visuz
-from graphviz import Digraph
-from indra.sources import tas
-import matplotlib.pyplot as plt
 from indra.util import batch_iter
-from collections import OrderedDict
 from collections import defaultdict
-import matplotlib.colors as mcolors
 from indra.statements import Complex
-from scipy.stats import fisher_exact
 from indra.sources import indra_db_rest
 import indra.tools.assemble_corpus as ac
-from indra.literature import pubmed_client
-from indra.assemblers.cx import hub_layout
 from indra.ontology.bio import bio_ontology
 from indra.databases.uniprot_client import um
 from indra.assemblers.html import HtmlAssembler
 # from make_enzyme_receptor_db import get_all_enzymes
-from indra.statements.agent import default_ns_order
 from indra.sources.omnipath import process_from_web
 from indra.assemblers.cx.assembler import CxAssembler
 from indra.databases import uniprot_client, hgnc_client
@@ -540,8 +520,8 @@ if __name__ == '__main__':
     logger.info('Total statements after filtering to direct ones %d' % (len(indra_db_stmts)))
 
     # Filter out the statements to database only
-    indra_db_stmts = filter_db_only(indra_db_stmts)
-    logger.info('Total statements after filtering to database only %d' % (len(indra_db_stmts)))
+    #indra_db_stmts = filter_db_only(indra_db_stmts)
+    #logger.info('Total statements after filtering to database only %d' % (len(indra_db_stmts)))
 
     # Fetch omnipath database biomolecular interactions and
     # process them into INDRA statements
