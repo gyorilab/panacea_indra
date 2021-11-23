@@ -32,7 +32,7 @@ up_hgnc = {v: k for k, v in um.uniprot_gene_name.items()
 
 db_curations = get_curations()
 
-# __file__ = '/Users/sbunga/gitHub/panacea_indra/panacea_indra/nextflow/scripts/make_ligand_receptor_database.py'
+#__file__ = '/Users/sbunga/gitHub/panacea_indra/panacea_indra/nextflow/scripts/make_ligand_receptor_database.py'
 HERE = os.path.dirname(os.path.abspath(__file__))
 INPUT = os.path.join(HERE, os.pardir, 'input')
 OUTPUT = os.path.join(HERE, os.pardir, 'output')
@@ -211,7 +211,7 @@ def filter_complex_statements(stmts, ligands, receptors):
     filtered_stmts = []
     for stmt in stmts:
         if isinstance(stmt, Complex):
-            if len(stmt.members) <=2:
+            if len(stmt.members) <= 2:
                 if (any(a.name in ligands for a in stmt.members)
                         and any(a.name in receptors for a in stmt.members)):
                     filtered_stmts.append(stmt)
@@ -509,6 +509,9 @@ def filter_to_complex_statements(stmts, ligands, receptors):
 
     filtered_stmts = []
     for stmt in stmts:
+        if filter_to_bel(stmt):
+            filtered_stmts.append(stmt)
+            continue
         if isinstance(stmt, Complex):
             if len(stmt.members) <= 2:
                 if (any(a.name in ligands for a in stmt.members)
@@ -517,21 +520,21 @@ def filter_to_complex_statements(stmts, ligands, receptors):
                     sources = {ev.source_api for ev in stmt.evidence}
                     evidence = len(stmt.evidence)
 
-                    # check for bel
-                    if ('bel' in sources) and (type(stmt).__name__ == 'IncreaseAmount' or
-                                               type(stmt).__name__ == 'Activation'):
-                        print(stmt)
-                        for ev in stmt.evidence:
-                            if 'bel' in ev.source_api and ev.epistemics.get('direct') == True:
-                                filtered_stmts.append(stmt)
-                                continue
-
                     if len(sources) == 1 and 'sparser' in sources:
                         continue
                     if evidence < 2 and sources <= readers:
                         continue
                     filtered_stmts.append(stmt)
     return filtered_stmts
+
+
+def filter_to_bel(stmt):
+    sources = {ev.source_api for ev in stmt.evidence}
+    if ('bel' in sources) and (type(stmt).__name__ == 'IncreaseAmount' or
+                               type(stmt).__name__ == 'Activation'):
+        for ev in stmt.evidence:
+            if 'bel' in ev.source_api and ev.epistemics.get('direct') == True:
+                return stmt
 
 
 if __name__ == '__main__':
@@ -556,8 +559,8 @@ if __name__ == '__main__':
         logger.info('Total statements after filtering to direct ones %d' % (len(indra_db_stmts)))
 
         # Filter out the statements to database only
-        #indra_db_stmts = filter_db_only(indra_db_stmts)
-        #logger.info('Total statements after filtering to database only %d' % (len(indra_db_stmts)))
+        # indra_db_stmts = filter_db_only(indra_db_stmts)
+        # logger.info('Total statements after filtering to database only %d' % (len(indra_db_stmts)))
 
         # Fetch omnipath database biomolecular interactions and
         # process them into INDRA statements
