@@ -1,10 +1,11 @@
 import os
 import logging
 import pandas as pd
+from collections import defaultdict
 from make_ligand_receptor_database import *
 from indra.databases.uniprot_client import um
 
-logging.basicConfig(level = logging.INFO)
+logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger('Compare_interactions')
 
 
@@ -48,7 +49,6 @@ unique_to_cdb_genes = {"_".join([hgnc_up[i.split("_")[0]], hgnc_up[i.split("_")[
                        if i.split("_")[0] in hgnc_up and i.split("_")[1] in hgnc_up}
 
 
-
 # Get all the receptors from indra interactome
 rg = get_receptors()
 # Get all ligands from the indra interactome
@@ -58,6 +58,7 @@ lg = get_ligands()
 protein_generated_cdb = \
     pd.read_csv(os.path.join(OUTPUT, 'cellphonedb_database', 'cellphonedb', 'protein_generated.csv'))
 
+# Get receptors == True from protein_generated.csv table
 cdb_receptor = protein_generated_cdb['uniprot'][protein_generated_cdb.receptor == True]
 cdb_receptor = {hgnc_up[c] for c in cdb_receptor if c in hgnc_up}
 
@@ -65,14 +66,50 @@ cdb_receptor = {hgnc_up[c] for c in cdb_receptor if c in hgnc_up}
 # Receptors unique to cellphonedb
 unique_rg_cdb = cdb_receptor - rg
 logger.info('Receptors unique to cellphonedb curation list: %d' % len(cdb_receptor - rg))
-
+# save the list
+pd.DataFrame({'Receptors': list(unique_rg_cdb)}).to_csv(os.path.join(OUTPUT, 'unique_cdb_receptors.csv'),
+                                   index=False, header=True)
 # Receptors unique to INDRA
 logger.info('Receptors unique to INDRA: %d' % len(rg - cdb_receptor))
 
 # How many receptors in INDRA are curated as Receptor in protein_generated table from cellphonedb
 non_rg = protein_generated_cdb['uniprot'][protein_generated_cdb.receptor == False]
 non_rg = {hgnc_up[i] for i in non_rg if i in hgnc_up}
-logger.info('Total receptors in INDRA which are not annotated as receptors == False: %d' % (len(non_rg & rg)))
+logger.info('Total receptors in INDRA which are NOT curated as receptors by cellphonedb: %d' % (len(non_rg & rg)))
+
+logger.info('Total receptors in INDRA which are curated as receptors by cellphonedb: %d' % (len(cdb_receptor & rg)))
+
+# save receptors from INDRA which are curated as False by cellphonedb
+
+pd.DataFrame({'Receptors': list(non_rg & rg)}).to_csv(os.path.join(OUTPUT, 'indra_not_receptors_by_cdb.csv'),
+                                                      index=False, header=True)
+
+# get ion channels
+ion_channels = get_ion_channels()
+indra_non_rg = set(non_rg & rg)
+logger.info('Total ion channels in INDRA receptors and not in cellphonedb: %d' % (len(ion_channels & indra_non_rg)))
+
+# Now lets check to which ontology these remaining receptors are classified into
+receptor_terms = ['signaling receptor activity']
+receptor_go_ids = [bio_ontology.get_id_from_name('GO', term)[1]
+                   for term in receptor_terms]
+receptor_go_ids = expand_with_child_go_terms(receptor_go_ids)
+
+# Lets create a dictionary of ontology terms as keys and
+# its genes as values
+receptors_ontology = defaultdict(set)
+for r in receptor_go_ids:
+    if 'receptor' in bio_ontology.get_name('GO', r):
+        g = get_genes_for_go_ids([r])
+        receptors_ontology[('receptors')].update(g)
+    elif 'sensor' in bio_ontology.get_name('GO', r):
+        g = get_genes_for_go_ids([r])
+        receptors_ontology[('sensor')].update(g)
+    elif 'channel' in bio_ontology.get_name('GO', r):
+        g = get_genes_for_go_ids([r])
+        receptors_ontology[('channel')].update(g)
+
+# check to which ontology these missing receptors belong to
+len((indra_non_rg - ion_channels) & receptors_ontology[('receptors')])
 
 # Subset the protein table with the INDRA receptors which are annotated as False
-#protein_generated_cdb['uniprot']
