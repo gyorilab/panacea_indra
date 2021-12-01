@@ -74,5 +74,10 @@ for genes in df_merged.index:
             rank_df.at[genes, 'score'] = rank_df.loc[genes]['score'] + 20
         else:
             rank_df.at[genes, 'score'] = rank_df.loc[genes]['score'] - 20
+
 rank_df.sort_values(by=['score'], ascending=False, inplace=True)
+# re-arrange the columns
+new_cols = rank_df.columns.to_list()
+new_cols = new_cols[-1:] + new_cols[:-1]
+rank_df = rank_df[new_cols]
 rank_df.to_csv(os.path.join(OUTPUT, 'rank_df.csv'))
