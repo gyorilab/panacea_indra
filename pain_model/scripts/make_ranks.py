@@ -53,10 +53,13 @@ rank_df = pd.DataFrame(
     }
 )
 rank_df[nociceptor_columns] = df_merged[nociceptor_columns].values
-# Create dummy columns
-rank_df[df_merged.columns[3:].values] = 0.00
-rank_df.set_index('MOUSE_SYMBOL', inplace=True)
 
+rank_df.set_index('MOUSE_SYMBOL', inplace=True)
+# Create dummy columns
+rank_df[df_merged.columns[3:]] = 0.00
+
+# Create a rank column with 100 as base value
+rank_df[['score']] = 100.00
 for genes in df_merged.index:
     # get max value from 3 nociceptor clusters
     max_val = max(df_merged.loc[genes][0:3])
@@ -67,5 +70,9 @@ for genes in df_merged.index:
         # cluster
         final = ((max_val - cluster_val)/max_val)*100
         rank_df.at[genes, clusters] = float("%.3f" % final)
-rank_df[['score']] = 100.00
+        if final > 80:
+            rank_df.at[genes, 'score'] = rank_df.loc[genes]['score'] + 20
+        else:
+            rank_df.at[genes, 'score'] = rank_df.loc[genes]['score'] - 20
+
 rank_df.to_csv(os.path.join(OUTPUT, 'rank_df.csv'))
