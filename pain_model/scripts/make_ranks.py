@@ -2,7 +2,6 @@ import os
 import re
 import pandas as pd
 from functools import reduce
-from sklearn.preprocessing import StandardScaler
 
 
 HERE = os.path.realpath(os.path.dirname(__file__))
@@ -95,7 +94,6 @@ for genes in df_merged.index:
                 if samples == 'Heart_131c_sn.scaled':
                     if (proteomics_df.loc[genes, 'DRG'] + 1) / (proteomics_df.loc[genes, samples] + 1) > 3:
                         rank_df.at[genes, 'score'] = rank_df.loc[genes]['score'] + 60
-
 
 
 rank_df.sort_values(by=['score'], ascending=False, inplace=True)
