@@ -13,7 +13,7 @@ import indra.tools.assemble_corpus as ac
 from indra.ontology.bio import bio_ontology
 from indra.databases.uniprot_client import um
 from indra.databases import uniprot_client, hgnc_client
-from make_ligand_receptor_database import get_receptors
+from make_ligand_receptor_database import get_receptors, get_go_receptors
 
 logger = logging.getLogger('Enzyme Product Interactome')
 
@@ -93,7 +93,7 @@ indra_df = load_indra_df(INDRA_DB_PKL)
 
 if __name__ == '__main__':
     # get receptors
-    receptors_genes_go = get_receptors()
+    receptors_genes_go = get_go_receptors()
     # Enzyme product interactions
     PC_SIF_URL = ('https://www.pathwaycommons.org/archives/PC2/v12/'
                   'PathwayCommons12.Detailed.hgnc.sif.gz')
