@@ -63,10 +63,12 @@ def filter_by_evidence(stmts):
     readers = {'medscan', 'eidos', 'reach',
                'rlimsp', 'trips', 'sparser'}
     for stmt in stmts:
-        sources = [ev.source_api for ev in stmt.evidence]
+        sources = {ev.source_api for ev in stmt.evidence}
         evidence = len(stmt.evidence)
 
-        if evidence < 2 and set(sources) <= readers:
+        if evidence < 2 and sources <= readers:
+            continue
+        elif sources == {'sparser'}:
             continue
         else:
             filtered_hashes.add(stmt.get_hash())
@@ -79,7 +81,7 @@ def download_statements(hashes):
     stmts_by_hash = {}
     for group in tqdm.tqdm(batch_iter(hashes, 200), total=int(len(hashes) / 200)):
         idbp = indra_db_rest.get_statements_by_hash(list(group),
-                                                    ev_limit=100)
+                                                    ev_limit=10000)
         for stmt in idbp.statements:
             stmts_by_hash[stmt.get_hash()] = stmt
     return stmts_by_hash
@@ -154,13 +156,14 @@ if __name__ == '__main__':
     stmts_hash = download_statements(set.union(set(enzyme_target_df.Statement_hash)))
     # filter to direct statements
     stmts = ac.filter_direct(stmts_hash.values())
+
     # filter out sparser hashes
     filtered_hashes = filter_by_evidence(stmts)
 
     filtered_enzyme_target_df = \
         enzyme_target_df[enzyme_target_df['Statement_hash'].isin(filtered_hashes)]
 
-    logger.info('Total final statements: %d' % (len(filtered_enzyme_target_df)))
+    #logger.info('Total final statements: %d' % (len(filtered_enzyme_target_df)))
     filtered_enzyme_target_df.to_csv(os.path.join(HERE, os.pardir, 'output/enzyme_product_target.csv'))
 
     enzyme_receptors = defaultdict(set)
