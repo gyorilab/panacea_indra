@@ -392,6 +392,23 @@ def get_receptors():
     return receptor_genes_go
 
 
+def get_go_receptors():
+    receptor_terms = ['signaling receptor activity']
+    receptor_go_ids = [bio_ontology.get_id_from_name('GO', term)[1]
+                       for term in receptor_terms]
+    receptor_go_ids = expand_with_child_go_terms(receptor_go_ids)
+    # Filtering out the nuclear receptors from the receptor list
+    receptor_go_ids = {r for r in receptor_go_ids if
+                       'receptor' in bio_ontology.get_name('GO', r) or
+                       'sensor' in bio_ontology.get_name('GO', r) or
+                       'channel' in bio_ontology.get_name('GO', r)}
+    nuclear_receptor_go_ids = expand_with_child_go_terms(['GO:0004879'])
+    receptor_genes_go = get_genes_for_go_ids(receptor_go_ids) - \
+        get_genes_for_go_ids(nuclear_receptor_go_ids)
+    receptor_genes_go -= {'NR2C2', 'EGF'}
+    return receptor_genes_go
+
+
 def get_ligands():
     # Read and extract cell surface proteins from CSPA DB
     wb = openpyxl.load_workbook(SURFACE_PROTEINS_WB)
