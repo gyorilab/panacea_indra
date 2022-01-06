@@ -6,7 +6,8 @@ from collections import defaultdict
 HERE = os.getcwd()
 
 # Read phospho data
-phospho_xl = os.path.join(HERE, os.pardir, 'data/Primary_mouse/Proteomics/phos_PANA_16plx_Oct2020_working_forSam.xlsx')
+phospho_xl = os.path.join(HERE, os.pardir,
+                          'data/Primary_mouse/Proteomics/phos_PANA_16plx_Oct2020_working_forSam.xlsx')
 phospho_df = pd.read_excel(phospho_xl, sheet_name='P31_16plx_Panacea_singl&comp')
 
 # Read enriched genes
@@ -22,7 +23,7 @@ phospho_df = phospho_df[boolean]
 
 df = dict()
 
-for r,c in phospho_df.iterrows():
+for r, c in phospho_df.iterrows():
     if c[2] not in df.keys():
         df[c[2]] = {
             'Site Position': [c[4]],

@@ -21,6 +21,11 @@ transcript_files = {
 proteomics_files = {
     'protein_exp': os.path.join(OUTPUT, 'protein_exp.csv'),
 }
+
+# Read phospho data
+phospho_files = {
+    'phospho': os.path.join(OUTPUT, 'phospho.csv')
+}
 #
 # Check if all the files exists
 all(True for k, v in transcript_files.items() if os.path.isfile(transcript_files[k]))
@@ -68,6 +73,7 @@ proteomics_df = pd.read_csv(proteomics_files['protein_exp'])
 proteomics_df.index = proteomics_df.MOUSE_SYMBOL
 proteomics_df.drop(['Unnamed: 0', 'Description', 'MOUSE_SYMBOL'], axis=1, inplace=True)
 proteomics_df = proteomics_df.loc[proteomics_df.index.drop_duplicates(keep=False), ]
+
 
 # Create a rank column with 100 as base value
 rank_df[['score']] = 100.00
