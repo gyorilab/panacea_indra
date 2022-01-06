@@ -34,7 +34,7 @@ db_curations = get_curations()
 
 #__file__ = '/Users/sbunga/gitHub/panacea_indra/panacea_indra/nextflow/scripts/make_ligand_receptor_database.py'
 HERE = os.path.dirname(os.path.abspath(__file__))
-INPUT = os.path.join(HERE, os.pardir, 'input')
+INPUT = os.path.join(HERE, os.pardir, os.pardir, os.pardir, 'input')
 OUTPUT = os.path.join(HERE, os.pardir, 'output')
 INDRA_DB_PKL = os.path.join(INPUT, 'db_dump_df.pkl')
 NATURE_LIGAND_RECEPTOR_SPREADSHEET = os.path.join(INPUT, 'ncomms8866-s3.xlsx')
@@ -375,12 +375,13 @@ def get_receptors():
                        for term in receptor_terms]
     receptor_go_ids = expand_with_child_go_terms(receptor_go_ids)
     # Filtering out the nuclear receptors from the receptor list
-    receptor_go_ids = {r for r in receptor_go_ids if 'receptor' in
-                       bio_ontology.get_name('GO', r) or 'sensor' in
-                       bio_ontology.get_name('GO', r) or 'channel' in
-                       bio_ontology.get_name('GO', r)} - \
-                      expand_with_child_go_terms(['GO:0004879'])
-    receptor_genes_go = get_genes_for_go_ids(receptor_go_ids)
+    receptor_go_ids = {r for r in receptor_go_ids if
+                       'receptor' in bio_ontology.get_name('GO', r) or
+                       'sensor' in bio_ontology.get_name('GO', r) or
+                       'channel' in bio_ontology.get_name('GO', r)}
+    nuclear_receptor_go_ids = expand_with_child_go_terms(['GO:0004879'])
+    receptor_genes_go = get_genes_for_go_ids(receptor_go_ids) - \
+        get_genes_for_go_ids(nuclear_receptor_go_ids)
     receptor_genes_go -= {'NR2C2', 'EGF'}
     # Add ION channels to the receptor list
     ion_channels = set()
