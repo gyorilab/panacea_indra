@@ -13,7 +13,7 @@ import indra.tools.assemble_corpus as ac
 from indra.ontology.bio import bio_ontology
 from indra.databases.uniprot_client import um
 from indra.databases import uniprot_client, hgnc_client
-from make_ligand_receptor_database import get_receptors, get_go_receptors
+from make_ligand_receptor_database import get_receptors, get_go_receptors, get_cpdb_receptors, get_ion_channels
 
 logger = logging.getLogger('Enzyme Product Interactome')
 
@@ -93,7 +93,7 @@ indra_df = load_indra_df(INDRA_DB_PKL)
 
 if __name__ == '__main__':
     # get receptors
-    receptors_genes_go = get_go_receptors()
+    receptors_genes_go = get_cpdb_receptors()
     # Enzyme product interactions
     PC_SIF_URL = ('https://www.pathwaycommons.org/archives/PC2/v12/'
                   'PathwayCommons12.Detailed.hgnc.sif.gz')
@@ -152,6 +152,7 @@ if __name__ == '__main__':
     boolean_series = enzyme_target_df['Interaction'].isin(stmts_to_filter)
     enzyme_target_df = enzyme_target_df[boolean_series]
 
+
     # download statements
     stmts_hash = download_statements(set.union(set(enzyme_target_df.Statement_hash)))
     # filter to direct statements
@@ -162,6 +163,34 @@ if __name__ == '__main__':
 
     filtered_enzyme_target_df = \
         enzyme_target_df[enzyme_target_df['Statement_hash'].isin(filtered_hashes)]
+
+    # remove ATP statements
+    filtered_enzyme_target_df = filtered_enzyme_target_df[filtered_enzyme_target_df['Product'] != 'ATP']
+
+    filtered_stmts = download_statements(set(filtered_enzyme_target_df.Statement_hash))
+    filtered_stmts = list(filtered_stmts.values())
+    with open('../output/filtered_stmts.pkl', 'wb') as fh:
+        pickle.dump(filtered_stmts, fh)
+
+    # Filter to ion channels statements
+    filtered_enzyme_target_ion_channels_df = \
+        filtered_enzyme_target_df[filtered_enzyme_target_df['Receptor'].isin(get_ion_channels())]
+    filtered_enzyme_target_ion_channels = download_statements(set(filtered_enzyme_target_ion_channels_df.Statement_hash))
+    filtered_enzyme_target_ion_channels = list(filtered_enzyme_target_ion_channels.values())
+    with open('../output/filtered_enzyme_target_ion_channels.pkl', 'wb') as fh:
+        pickle.dump(filtered_enzyme_target_ion_channels, fh)
+
+    # Filter to ion channels statements
+    filtered_enzyme_target_no_ion_channels_df = \
+        filtered_enzyme_target_df[~filtered_enzyme_target_df['Receptor'].isin(get_ion_channels())]
+    filtered_enzyme_target_no_ion_channels = download_statements(
+        set(filtered_enzyme_target_no_ion_channels_df.Statement_hash))
+    filtered_enzyme_target_no_ion_channels = list(filtered_enzyme_target_no_ion_channels.values())
+    with open('../output/filtered_enzyme_target_no_ion_channels.pkl', 'wb') as fh:
+        pickle.dump(filtered_enzyme_target_no_ion_channels, fh)
+
+
+
 
     #logger.info('Total final statements: %d' % (len(filtered_enzyme_target_df)))
     filtered_enzyme_target_df.to_csv(os.path.join(HERE, os.pardir, 'output/enzyme_product_target.csv'))
