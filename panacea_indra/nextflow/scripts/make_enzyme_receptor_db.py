@@ -1,4 +1,5 @@
-from make_ligand_receptor_database import *
+from .api import *
+
 
 logger = logging.getLogger('Enzyme Product Interactome')
 
@@ -84,7 +85,7 @@ if __name__ == '__main__':
 
 
     # download statements
-    stmts_hash = download_statements(set.union(set(enzyme_target_df.Statement_hash)))
+    stmts_hash = download_statements(set.union(set(enzyme_target_df.Statement_hash)), ev=10000)
     # filter to direct statements
     stmts = ac.filter_direct(stmts_hash.values())
     # filter incorrect curations
