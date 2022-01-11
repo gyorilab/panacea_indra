@@ -1,61 +1,6 @@
-import os
-import tqdm
-import pyobo
-import obonet
-import pickle
-import logging
-import pandas as pd
-from pathlib import Path
-from indra.util import batch_iter
-from collections import defaultdict
-from indra.sources import indra_db_rest
-import indra.tools.assemble_corpus as ac
-from indra.ontology.bio import bio_ontology
-from indra.databases.uniprot_client import um
-from indra.databases import uniprot_client, hgnc_client
-from make_ligand_receptor_database import get_receptors, get_go_receptors, get_cpdb_receptors, get_ion_channels
+from make_ligand_receptor_database import *
 
 logger = logging.getLogger('Enzyme Product Interactome')
-
-__file__ = '/Users/sbunga/gitHub/panacea_indra/panacea_indra/nextflow/scripts/make_enzyme_receptor_db.py'
-HERE = os.path.dirname(os.path.abspath(__file__))
-INPUT = os.path.join(HERE, os.pardir, 'input')
-OUTPUT = os.path.join(HERE, os.pardir, 'output')
-INDRA_DB_PKL = os.path.join(INPUT, 'db_dump_df.pkl')
-GO_ANNOTATIONS = os.path.join(INPUT, 'goa_human.gaf')
-ION_CHANNELS = os.path.join(INPUT, 'ion_channels.txt')
-
-up_hgnc = {v: k for k, v in um.uniprot_gene_name.items()
-           if k in um.uniprot_hgnc}
-
-
-def get_all_enzymes():
-    HOME = str(Path.home())
-    ec_code_path = '.obo/ec-code/ec-code.obo'
-    if not os.path.exists(os.path.join(HOME, ec_code_path)):
-        _ = pyobo.get_id_name_mapping('ec-code')
-        obo = obonet.read_obo(os.path.join(HOME, ec_code_path))
-    else:
-        obo = obonet.read_obo(os.path.join(HOME, ec_code_path))
-    up_nodes = set()
-    for node in obo.nodes:
-        if node.startswith('uniprot'):
-            up_nodes.add(node[8:])
-    human_ups = {u for u in up_nodes if uniprot_client.is_human(u)}
-    enzymes = {uniprot_client.get_gene_name(u) for u in human_ups}
-    enzymes = {g for g in enzymes if not hgnc_client.is_kinase(g)}
-    enzymes = {g for g in enzymes if not hgnc_client.is_phosphatase(g)}
-    logger.info(f'Filtered {len(enzymes)} enzymes in total')
-    return enzymes
-
-
-def load_indra_df(fname):
-    """Return an INDRA Statement data frame from a pickle file."""
-    logger.info('Loading INDRA DB dataframe')
-    with open(fname, 'rb') as fh:
-        df = pickle.load(fh)
-    logger.info('Loaded %d rows from %s' % (len(df), fname))
-    return df
 
 
 def filter_by_evidence(stmts):
@@ -75,25 +20,10 @@ def filter_by_evidence(stmts):
     return filtered_hashes
 
 
-def download_statements(hashes):
-    """Download the INDRA Statements corresponding to a set of hashes.
-    """
-    stmts_by_hash = {}
-    for group in tqdm.tqdm(batch_iter(hashes, 200), total=int(len(hashes) / 200)):
-        idbp = indra_db_rest.get_statements_by_hash(list(group),
-                                                    ev_limit=10000)
-        for stmt in idbp.statements:
-            stmts_by_hash[stmt.get_hash()] = stmt
-    return stmts_by_hash
-
-
-# Load the INDRA DB DF
-indra_df = load_indra_df(INDRA_DB_PKL)
-
-
 if __name__ == '__main__':
     # get receptors
-    receptors_genes_go = get_cpdb_receptors()
+    receptors_genes_go = get_cpdb_receptors() | get_ion_channels()
+
     # Enzyme product interactions
     PC_SIF_URL = ('https://www.pathwaycommons.org/archives/PC2/v12/'
                   'PathwayCommons12.Detailed.hgnc.sif.gz')
@@ -157,6 +87,8 @@ if __name__ == '__main__':
     stmts_hash = download_statements(set.union(set(enzyme_target_df.Statement_hash)))
     # filter to direct statements
     stmts = ac.filter_direct(stmts_hash.values())
+    # filter incorrect curations
+    stmts = filter_incorrect_curations(stmts)
 
     # filter out sparser hashes
     filtered_hashes = filter_by_evidence(stmts)
@@ -180,7 +112,7 @@ if __name__ == '__main__':
     with open('../output/filtered_enzyme_target_ion_channels.pkl', 'wb') as fh:
         pickle.dump(filtered_enzyme_target_ion_channels, fh)
 
-    # Filter to ion channels statements
+    # Filter to not ion channels statements
     filtered_enzyme_target_no_ion_channels_df = \
         filtered_enzyme_target_df[~filtered_enzyme_target_df['Receptor'].isin(get_ion_channels())]
     filtered_enzyme_target_no_ion_channels = download_statements(
@@ -188,9 +120,6 @@ if __name__ == '__main__':
     filtered_enzyme_target_no_ion_channels = list(filtered_enzyme_target_no_ion_channels.values())
     with open('../output/filtered_enzyme_target_no_ion_channels.pkl', 'wb') as fh:
         pickle.dump(filtered_enzyme_target_no_ion_channels, fh)
-
-
-
 
     #logger.info('Total final statements: %d' % (len(filtered_enzyme_target_df)))
     filtered_enzyme_target_df.to_csv(os.path.join(HERE, os.pardir, 'output/enzyme_product_target.csv'))
