@@ -5,6 +5,7 @@ from collections import defaultdict
 from make_ligand_receptor_database import *
 from indra.databases.uniprot_client import um
 
+
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger('Compare_interactions')
 

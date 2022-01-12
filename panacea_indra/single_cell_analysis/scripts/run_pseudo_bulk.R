@@ -16,7 +16,7 @@ library(SingleCellExperiment)
 
 wd <- ('~/gitHub/singlecell_model_analysis/')
 setwd(wd)
-source('./functions.R')
+source('./api.R')
 seurat_integrated <- readRDS('./RDS/seurat_integrated_all_samples_clustered.Rds')
 
 #seurat_stim <- subset(seurat_integrated, type=='STIM')
