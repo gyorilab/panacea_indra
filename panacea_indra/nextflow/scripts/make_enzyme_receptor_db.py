@@ -1,4 +1,4 @@
-from .api import *
+from api import *
 
 
 logger = logging.getLogger('Enzyme Product Interactome')

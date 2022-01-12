@@ -1,10 +1,10 @@
-import logging
-from make_ligand_receptor_database import *
+from api import *
+
 
 logger = logging.getLogger('Ion channel interactome')
 
 
-full_ligand_set = get_ligands() - (get_receptors() | get_cpdb_receptors())
+full_ligand_set = get_ligands() - (get_ion_channels() | get_cpdb_receptors())
 logger.info('Total ligands in data %d' %(len(full_ligand_set)))
 ion_channels = get_ion_channels()
 logger.info('Total ion channels in data %d' %(len(ion_channels)))
@@ -47,4 +47,17 @@ indra_op_stmts = ac.run_preassembly(indra_db_stmts + op_filtered,
 # Filter incorrect curations
 indra_op_filtered = filter_incorrect_curations(indra_op_stmts)
 
+# Filter to complex statements
+indra_op_filtered = filter_to_complex_statements(indra_op_filtered,
+                                                 full_ligand_set,
+                                                 ion_channels)
+
+with open(os.path.join(OUTPUT, 'ion_channel_ligands_interaction_list.pkl'), 'wb') as fh:
+    pickle.dump(indra_op_filtered, fh)
+
 ion_by_ligands = get_receptor_by_ligands(ion_channels, full_ligand_set, indra_op_filtered)
+
+# Assemble the statements into HTML formatted report and save into a file
+indra_db_html_report = \
+    html_assembler(indra_op_filtered,
+                   fname=(os.path.join(HERE, os.pardir, 'output', 'ligand_ion_channel_interactions.html')))
