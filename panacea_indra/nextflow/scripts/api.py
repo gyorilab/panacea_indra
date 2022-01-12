@@ -34,7 +34,7 @@ db_curations = get_curations()
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 INPUT = os.path.join(HERE, os.pardir, os.pardir, os.pardir, 'input')
-OUTPUT = os.path.join(HERE, os.pardir, 'output')
+OUTPUT = os.path.join(HERE, os.pardir, os.pardir, os.pardir, 'output')
 INDRA_DB_PKL = os.path.join(INPUT, 'db_dump_df.pkl')
 NATURE_LIGAND_RECEPTOR_SPREADSHEET = os.path.join(INPUT, 'ncomms8866-s3.xlsx')
 GO_ANNOTATIONS = os.path.join(INPUT, 'goa_human.gaf')
