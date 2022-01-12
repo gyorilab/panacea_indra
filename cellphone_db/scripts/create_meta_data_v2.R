@@ -84,14 +84,13 @@ neuron_cells@meta.data$cellID <- neuron_cell_types
 
 
 # Subset the object by celltypes
-neuron_cells <-     subset(neuron_cells,
-                                subset = (
-                                  cellID == "cLTMR1" |  cellID == "p_cLTMR2" | 
-                                    cellID == "PEP1" |  cellID == "PEP2" | 
-                                    cellID == "NP" | cellID == "SST" |
-                                    cellID == "NF1" | cellID == "NF2" | 
-                                    cellID =="NF3")
-                                )
+neuron_cells <- subset(neuron_cells,
+                       subset = (
+                         cellID == "cLTMR1" |  cellID == "p_cLTMR2" | 
+                           cellID == "PEP1" |  cellID == "PEP2" | 
+                           cellID == "NP" | cellID == "SST" |
+                           cellID == "NF1" | cellID == "NF2" | 
+                           cellID =="NF3"))
 
 ## Below chunk of code is to rename cell idents in neuron data
 active.ident_neuron <- data.frame('cells' = names(neuron_cells@active.ident),
@@ -119,6 +118,7 @@ saveRDS(neuron_cells, './output/pkl/neuron_cells.Rds')
 dir.create('output/counts', showWarnings = F)
 dir.create('output/meta_data', showWarnings = F)
 count = 0
+
 ## Runnning loop to merge and save neuro and immune objects
 for (immune in immune_object) {
   count = count+1
