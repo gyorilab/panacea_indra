@@ -308,7 +308,7 @@ def get_ligands():
     # Converting GO id's to gene symbols
     ligand_genes_go = get_genes_for_go_ids(ligand_go_ids)
     manual_ligands = set()
-    ligand_genes_go = ligand_genes_go - get_cpdb_receptors() | get_ion_channels()
+    ligand_genes_go = ligand_genes_go - (get_cpdb_receptors() | get_ion_channels())
     return surface_protein_set | ligand_genes_go | manual_ligands
 
 
