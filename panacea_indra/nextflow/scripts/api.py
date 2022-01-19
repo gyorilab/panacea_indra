@@ -170,7 +170,7 @@ def html_assembler(indra_stmts, fname):
     """Assemble INDRA statements into a HTML report"""
     html_assembler = HtmlAssembler(indra_stmts,
                                    db_rest_url='https://db.indra.bio')
-    assembled_html_report = html_assembler.make_model(no_redundancy=True)
+    assembled_html_report = html_assembler.make_model(no_redundancy=True, grouping_level='statement')
     html_assembler.save_model(fname)
     return assembled_html_report
 
@@ -308,6 +308,7 @@ def get_ligands():
     # Converting GO id's to gene symbols
     ligand_genes_go = get_genes_for_go_ids(ligand_go_ids)
     manual_ligands = set()
+    ligand_genes_go = ligand_genes_go - get_cpdb_receptors() | get_ion_channels()
     return surface_protein_set | ligand_genes_go | manual_ligands
 
 
@@ -375,7 +376,7 @@ def process_nature_paper():
 
     nature_dataframe = pd.DataFrame(nature_dataframe)
 
-    nature_dataframe.to_csv(os.path.join(HERE, os.pardir, 'output', 'nature_uniprot.csv'),
+    nature_dataframe.to_csv(os.path.join(OUTPUT, 'nature_uniprot.csv'),
                             sep=",", index=False)
     return _make_nature_df(nature_xlsx)
 
