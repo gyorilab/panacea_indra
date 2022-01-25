@@ -60,4 +60,4 @@ ion_by_ligands = get_receptor_by_ligands(ion_channels, full_ligand_set, indra_op
 # Assemble the statements into HTML formatted report and save into a file
 indra_db_html_report = \
     html_assembler(indra_op_filtered,
-                   fname=(os.path.join(HERE, os.pardir, 'output', 'ligand_ion_channel_interactions.html')))
+                   fname=(os.path.join(OUTPUT, 'ligand_ion_channel_interactions.html')))
