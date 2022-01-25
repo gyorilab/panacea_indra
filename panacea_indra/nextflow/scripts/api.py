@@ -310,7 +310,7 @@ def get_ligands():
     # Converting GO id's to gene symbols
     ligand_genes_go = get_genes_for_go_ids(ligand_go_ids)
     manual_ligands = set()
-    ligand_genes_go = updated_surface_protein_set | ligand_genes_go | manual_ligands
+    ligand_genes_go = updated_surface_protein_set | ligand_genes_go | manual_ligands | get_cpdb_ligands()
     ligand_genes_go = {hgnc_client.get_hgnc_name(hgnc_client.get_current_hgnc_id(g))
                        for g in ligand_genes_go} - {None}
     ligand_genes_go = ligand_genes_go - (get_cpdb_receptors() | get_ion_channels())
@@ -462,8 +462,18 @@ def get_ion_channels():
 def get_cpdb_receptors():
     # Load the protein data from cellphonedb
     protein_generated_cdb = \
-        pd.read_csv(os.path.join(OUTPUT, 'cellphonedb_database', 'cellphonedb', 'protein_generated.csv'))
+        pd.read_csv(os.path.join('~/.cpdb/releases/v2.0.0/protein_generated.csv'))
     hgnc_up = {v: k for k, v in up_hgnc.items()}
     cdb_receptor = protein_generated_cdb['uniprot'][protein_generated_cdb.receptor == True]
     cdb_receptor = {hgnc_up[c] for c in cdb_receptor if c in hgnc_up}
     return cdb_receptor
+
+
+def get_cpdb_ligands():
+    hgnc_up = {v: k for k, v in up_hgnc.items()}
+    # Load the protein data from cellphonedb
+    protein_input = pd.read_csv(os.path.join('~/.cpdb/releases/v2.0.0/protein_input.csv'))
+    ligands_up_in = protein_input[(protein_input['receptor'] == False)]
+    ligands_up_in = set(ligands_up_in.uniprot)
+    ligands_cpdb_in = {hgnc_up[c] for c in ligands_up_in if c in hgnc_up}
+    return ligands_cpdb_in

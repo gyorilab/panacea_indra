@@ -4,7 +4,7 @@ from api import *
 logger = logging.getLogger('Ion channel interactome')
 
 
-full_ligand_set = get_ligands() - (get_ion_channels() | get_cpdb_receptors())
+full_ligand_set = get_ligands()
 logger.info('Total ligands in data %d' %(len(full_ligand_set)))
 ion_channels = get_ion_channels()
 logger.info('Total ion channels in data %d' %(len(ion_channels)))
@@ -39,6 +39,7 @@ op_filtered = ac.filter_direct(op_filtered)
 
 op_filtered = ac.filter_by_curation(op_filtered,
                                     curations=db_curations)
+logger.info('Total OP statements %d' % (len(op_filtered)))
 
 # Merge omnipath/INDRA statements and run assembly
 indra_op_stmts = ac.run_preassembly(indra_db_stmts + op_filtered,
@@ -51,6 +52,7 @@ indra_op_filtered = filter_incorrect_curations(indra_op_stmts)
 indra_op_filtered = filter_to_complex_statements(indra_op_filtered,
                                                  full_ligand_set,
                                                  ion_channels)
+logger.info('Total statements %d' % (len(indra_op_filtered)))
 
 with open(os.path.join(OUTPUT, 'ion_channel_ligands_interaction_list.pkl'), 'wb') as fh:
     pickle.dump(indra_op_filtered, fh)
