@@ -294,6 +294,8 @@ def get_ligands():
     wb = openpyxl.load_workbook(SURFACE_PROTEINS_WB)
     surface_protein_set = set(row[4].value for row in wb['Sheet 1']
                               if row[6].value == 'yes')
+    updated_surface_protein_set = {hgnc_client.get_hgnc_name(hgnc_client.get_current_hgnc_id(g))
+                                   for g in surface_protein_set} - {None}
     logger.info('Got %d surface proteins from spreadsheet' %
                 len(surface_protein_set))
     ligand_terms = ['cytokine activity', 'hormone activity',
@@ -308,8 +310,11 @@ def get_ligands():
     # Converting GO id's to gene symbols
     ligand_genes_go = get_genes_for_go_ids(ligand_go_ids)
     manual_ligands = set()
+    ligand_genes_go = updated_surface_protein_set | ligand_genes_go | manual_ligands
+    ligand_genes_go = {hgnc_client.get_hgnc_name(hgnc_client.get_current_hgnc_id(g))
+                       for g in ligand_genes_go} - {None}
     ligand_genes_go = ligand_genes_go - (get_cpdb_receptors() | get_ion_channels())
-    return surface_protein_set | ligand_genes_go | manual_ligands
+    return ligand_genes_go
 
 
 def make_interaction_df(indra_op):

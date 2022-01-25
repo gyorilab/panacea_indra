@@ -2,15 +2,15 @@ from api import *
 
 
 if __name__ == '__main__':
-    receptor_genes_go = get_cpdb_receptors() | get_ion_channels()
+    receptor_genes = get_cpdb_receptors() | get_ion_channels()
 
     # remove all the receptors from the surface_protein_set
-    full_ligand_set = get_ligands() - receptor_genes_go
+    full_ligand_set = get_ligands()
 
     if not os.path.isfile(os.path.join(OUTPUT, 'indra_op_stmts.pkl')):
         # Now get INDRA DB Statements for the receptor-ligand pairs
         hashes_by_gene_pair = get_hashes_by_gene_pair(indra_df, full_ligand_set,
-                                                      receptor_genes_go)
+                                                      receptor_genes)
 
         # get the union of all the statement hashes
         all_hashes = set.union(*hashes_by_gene_pair.values())
@@ -35,7 +35,7 @@ if __name__ == '__main__':
         # Filter statements which are not ligands/receptors from
         # OmniPath database
         op_filtered = filter_op_stmts(op.statements, full_ligand_set,
-                                      receptor_genes_go)
+                                      receptor_genes)
         op_filtered = ac.filter_direct(op_filtered)
 
         op_filtered = ac.filter_by_curation(op_filtered,
@@ -56,7 +56,7 @@ if __name__ == '__main__':
     # Filter to complex statements
     indra_op_filtered = filter_to_complex_statements(indra_op_filtered,
                                                      full_ligand_set,
-                                                     receptor_genes_go)
+                                                     receptor_genes)
 
     # We do this again because when removing complex members, we
     # end up with more duplicates
@@ -64,7 +64,7 @@ if __name__ == '__main__':
                                            run_refinement=False)
 
     # get ligands by receptor for indra_op
-    indra_op_receptor_by_ligands = get_receptor_by_ligands(receptor_genes_go,
+    indra_op_receptor_by_ligands = get_receptor_by_ligands(receptor_genes,
                                                            full_ligand_set,
                                                            indra_op_filtered)
 
