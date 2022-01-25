@@ -102,16 +102,23 @@ if __name__ == '__main__':
 
     filtered_stmts = download_statements(set(filtered_enzyme_target_df.Statement_hash))
     filtered_stmts = list(filtered_stmts.values())
-    with open('../output/filtered_stmts.pkl', 'wb') as fh:
+    with open(os.path.join(OUTPUT, 'filtered_stmts.pkl'), 'wb') as fh:
         pickle.dump(filtered_stmts, fh)
 
+    indra_db_html_report = \
+        html_assembler(filtered_stmts,
+                       fname=(os.path.join(OUTPUT, 'enzyme_receptor_interactions.html')))
     # Filter to ion channels statements
     filtered_enzyme_target_ion_channels_df = \
         filtered_enzyme_target_df[filtered_enzyme_target_df['Receptor'].isin(get_ion_channels())]
     filtered_enzyme_target_ion_channels = download_statements(set(filtered_enzyme_target_ion_channels_df.Statement_hash))
     filtered_enzyme_target_ion_channels = list(filtered_enzyme_target_ion_channels.values())
-    with open('../output/filtered_enzyme_target_ion_channels.pkl', 'wb') as fh:
+    with open(os.path.join(OUTPUT, 'filtered_enzyme_target_ion_channels.pkl'), 'wb') as fh:
         pickle.dump(filtered_enzyme_target_ion_channels, fh)
+
+    indra_db_html_report = \
+        html_assembler(filtered_enzyme_target_ion_channels,
+                       fname=(os.path.join(OUTPUT, 'enzyme_product_ion_channel_interactions.html')))
 
     # Filter to not ion channels statements
     filtered_enzyme_target_no_ion_channels_df = \
@@ -119,11 +126,13 @@ if __name__ == '__main__':
     filtered_enzyme_target_no_ion_channels = download_statements(
         set(filtered_enzyme_target_no_ion_channels_df.Statement_hash))
     filtered_enzyme_target_no_ion_channels = list(filtered_enzyme_target_no_ion_channels.values())
-    with open('../output/filtered_enzyme_target_no_ion_channels.pkl', 'wb') as fh:
+    with open(os.path.join(OUTPUT, 'filtered_enzyme_target_no_ion_channels.pkl'), 'wb') as fh:
         pickle.dump(filtered_enzyme_target_no_ion_channels, fh)
 
-    #logger.info('Total final statements: %d' % (len(filtered_enzyme_target_df)))
-    filtered_enzyme_target_df.to_csv(os.path.join(HERE, os.pardir, 'output/enzyme_product_target.csv'))
+    indra_db_html_report = \
+        html_assembler(filtered_enzyme_target_no_ion_channels,
+                       fname=(os.path.join(OUTPUT, 'enzyme_product_cpdb_receptors_interactions.html')))
+    filtered_enzyme_target_df.to_csv(os.path.join(OUTPUT, 'enzyme_product_target.csv'))
 
     enzyme_receptors = defaultdict(set)
     for v in filtered_enzyme_target_df.values:
@@ -161,4 +170,4 @@ if __name__ == '__main__':
             )
 
     enzyme_df = pd.DataFrame(indra_op_df)
-    enzyme_df.to_csv(os.path.join(HERE, os.pardir, 'output/indra_op_enzyme_uniprot.csv'), sep=",", index=False)
+    enzyme_df.to_csv(os.path.join(OUTPUT, 'indra_op_enzyme_uniprot.csv'), sep=",", index=False)
