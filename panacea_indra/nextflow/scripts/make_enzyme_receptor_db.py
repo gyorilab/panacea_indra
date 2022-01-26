@@ -4,26 +4,10 @@ from api import *
 logger = logging.getLogger('Enzyme Product Interactome')
 
 
-def filter_by_evidence(stmts):
-    filtered_hashes = set()
-    readers = {'medscan', 'eidos', 'reach',
-               'rlimsp', 'trips', 'sparser'}
-    for stmt in stmts:
-        sources = {ev.source_api for ev in stmt.evidence}
-        evidence = len(stmt.evidence)
-
-        if evidence < 2 and sources <= readers:
-            continue
-        elif sources == {'sparser'}:
-            continue
-        else:
-            filtered_hashes.add(stmt.get_hash())
-    return filtered_hashes
-
-
 if __name__ == '__main__':
     # get receptors
-    receptors_genes_go = get_cpdb_receptors() | get_ion_channels()
+    receptors_genes = set(get_cpdb_receptors()) | set(get_nature_receptors()) \
+                      | set(get_ion_channels())
 
     # Enzyme product interactions
     PC_SIF_URL = ('https://www.pathwaycommons.org/archives/PC2/v12/'
@@ -54,15 +38,15 @@ if __name__ == '__main__':
     # search for enzyme-product target
     product_targets = defaultdict(set)
     products = set(enzyme_product.keys())
-    enzyme_target_df = []
     logger.info('Total enzyme-products in data: %d' % (len(products)))
 
+    enzyme_target_df = []
     for a, b, stmt_type, hs, ec in zip(indra_df.agA_name,
                                        indra_df.agB_name,
                                        indra_df.stmt_type,
                                        indra_df.stmt_hash,
                                        indra_df.evidence_count):
-        if a in products and b in receptors_genes_go:
+        if a in products and b in receptors_genes:
 
             product_targets[(a)].add(b)
             enzyme_target_df.append(
@@ -96,43 +80,21 @@ if __name__ == '__main__':
 
     filtered_enzyme_target_df = \
         enzyme_target_df[enzyme_target_df['Statement_hash'].isin(filtered_hashes)]
+    logger.info('Total filtered hashes: %d' % (len(filtered_enzyme_target_df)))
 
     # remove ATP statements
     filtered_enzyme_target_df = filtered_enzyme_target_df[filtered_enzyme_target_df['Product'] != 'ATP']
+    logger.info('Hashes after removing ATP statements: %d' % (len(filtered_enzyme_target_df)))
 
     filtered_stmts = download_statements(set(filtered_enzyme_target_df.Statement_hash))
     filtered_stmts = list(filtered_stmts.values())
+    logger.info('Total statements after filtering: %d' % (len(filtered_stmts)))
     with open(os.path.join(OUTPUT, 'filtered_stmts.pkl'), 'wb') as fh:
         pickle.dump(filtered_stmts, fh)
 
     indra_db_html_report = \
         html_assembler(filtered_stmts,
                        fname=(os.path.join(OUTPUT, 'enzyme_receptor_interactions.html')))
-    # Filter to ion channels statements
-    filtered_enzyme_target_ion_channels_df = \
-        filtered_enzyme_target_df[filtered_enzyme_target_df['Receptor'].isin(get_ion_channels())]
-    filtered_enzyme_target_ion_channels = download_statements(set(filtered_enzyme_target_ion_channels_df.Statement_hash))
-    filtered_enzyme_target_ion_channels = list(filtered_enzyme_target_ion_channels.values())
-    with open(os.path.join(OUTPUT, 'filtered_enzyme_target_ion_channels.pkl'), 'wb') as fh:
-        pickle.dump(filtered_enzyme_target_ion_channels, fh)
-
-    indra_db_html_report = \
-        html_assembler(filtered_enzyme_target_ion_channels,
-                       fname=(os.path.join(OUTPUT, 'enzyme_product_ion_channel_interactions.html')))
-
-    # Filter to not ion channels statements
-    filtered_enzyme_target_no_ion_channels_df = \
-        filtered_enzyme_target_df[~filtered_enzyme_target_df['Receptor'].isin(get_ion_channels())]
-    filtered_enzyme_target_no_ion_channels = download_statements(
-        set(filtered_enzyme_target_no_ion_channels_df.Statement_hash))
-    filtered_enzyme_target_no_ion_channels = list(filtered_enzyme_target_no_ion_channels.values())
-    with open(os.path.join(OUTPUT, 'filtered_enzyme_target_no_ion_channels.pkl'), 'wb') as fh:
-        pickle.dump(filtered_enzyme_target_no_ion_channels, fh)
-
-    indra_db_html_report = \
-        html_assembler(filtered_enzyme_target_no_ion_channels,
-                       fname=(os.path.join(OUTPUT, 'enzyme_product_cpdb_receptors_interactions.html')))
-    filtered_enzyme_target_df.to_csv(os.path.join(OUTPUT, 'enzyme_product_target.csv'))
 
     enzyme_receptors = defaultdict(set)
     for v in filtered_enzyme_target_df.values:
@@ -155,12 +117,12 @@ if __name__ == '__main__':
     enzyme_receptors_df.to_csv(os.path.join(OUTPUT, 'enzyme_receptor.csv'), index=0)
 
     # cellphone db formatted database
-    indra_op_df = []
+    indra_df = []
     count = 0
     for v in enzyme_receptors_df.values:
         count += 1
         if v[0] in up_hgnc and v[1] in up_hgnc:
-            indra_op_df.append(
+            indra_df.append(
                 {
                     'id_cp_interaction': 'Woolf-' + str(count),
                     'partner_a': up_hgnc[v[0]],
@@ -169,5 +131,5 @@ if __name__ == '__main__':
                 }
             )
 
-    enzyme_df = pd.DataFrame(indra_op_df)
-    enzyme_df.to_csv(os.path.join(OUTPUT, 'indra_op_enzyme_uniprot.csv'), sep=",", index=False)
+    enzyme_df = pd.DataFrame(indra_df)
+    enzyme_df.to_csv(os.path.join(OUTPUT, 'indra_enzyme_uniprot.csv'), sep=",", index=False)

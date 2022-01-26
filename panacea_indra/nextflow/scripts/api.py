@@ -221,6 +221,23 @@ def filter_db_only(stmts):
     return new_stmts
 
 
+def filter_by_evidence(stmts):
+    filtered_hashes = set()
+    readers = {'medscan', 'eidos', 'reach',
+               'rlimsp', 'trips', 'sparser', 'isi'}
+    for stmt in stmts:
+        sources = {ev.source_api for ev in stmt.evidence}
+        evidence = len(stmt.evidence)
+
+        if evidence < 2 and sources <= readers:
+            continue
+        elif sources == {'sparser'}:
+            continue
+        else:
+            filtered_hashes.add(stmt.get_hash())
+    return filtered_hashes
+
+
 def filter_incorrect_curations(stmts):
     # Filter incorrect curations
     indra_op_filtered = ac.filter_by_curation(stmts,
@@ -462,7 +479,8 @@ def get_ion_channels():
 def get_cpdb_receptors():
     # Load the protein data from cellphonedb
     protein_generated_cdb = \
-        pd.read_csv(os.path.join('~/.cpdb/releases/v2.0.0/protein_generated.csv'))
+        pd.read_csv(os.path.join(OUTPUT, 'cellphonedb_database',
+                                 'cellphonedb', 'protein_generated.csv'))
     hgnc_up = {v: k for k, v in up_hgnc.items()}
     cdb_receptor = protein_generated_cdb['uniprot'][protein_generated_cdb.receptor == True]
     cdb_receptor = {hgnc_up[c] for c in cdb_receptor if c in hgnc_up}
@@ -477,3 +495,11 @@ def get_cpdb_ligands():
     ligands_up_in = set(ligands_up_in.uniprot)
     ligands_cpdb_in = {hgnc_up[c] for c in ligands_up_in if c in hgnc_up}
     return ligands_cpdb_in
+
+
+def get_nature_receptors():
+    nature_interactions = pd.read_excel(os.path.join(INPUT, 'ncomms8866-s3.xlsx'),
+                                        sheet_name='All.Pairs')
+    nature_pairs = set(nature_interactions.loc[0:, 'Pair.Name'])
+    nature_receptors = [p.split('_')[1] for p in nature_pairs]
+    return nature_receptors
