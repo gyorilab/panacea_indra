@@ -7,11 +7,13 @@ import logging
 import openpyxl
 import pandas as pd
 from pathlib import Path
+import matplotlib.pyplot as plt
 from indra.util import batch_iter
 from collections import defaultdict
 from indra.statements import Complex
 from indra.sources import indra_db_rest
 import indra.tools.assemble_corpus as ac
+from matplotlib_venn import venn2, venn3
 from indra.ontology.bio import bio_ontology
 from indra.databases.uniprot_client import um
 from indra.assemblers.html import HtmlAssembler
@@ -29,6 +31,8 @@ mouse_gene_name_to_mgi = {v: um.uniprot_mgi.get(k)
 
 up_hgnc = {v: k for k, v in um.uniprot_gene_name.items()
            if k in um.uniprot_hgnc}
+
+hgnc_up = {v: k for k, v in up_hgnc.items()}
 
 db_curations = get_curations()
 
@@ -501,5 +505,36 @@ def get_nature_receptors():
     nature_interactions = pd.read_excel(os.path.join(INPUT, 'ncomms8866-s3.xlsx'),
                                         sheet_name='All.Pairs')
     nature_pairs = set(nature_interactions.loc[0:, 'Pair.Name'])
-    nature_receptors = [p.split('_')[1] for p in nature_pairs]
+    nature_receptors = {p.split('_')[1] for p in nature_pairs}
     return nature_receptors
+
+
+def make_venn_plots(gene_sets: list, set_names: list, outname: str):
+    font2 = {'family': 'Ariel', 'size': 8}  # use for labels
+    plt.rc('font', **font2)  # sets the default font
+
+    if len(gene_sets) != len(set_names):
+        return False
+    if len(gene_sets) > 3 or len(gene_sets) <= 1:
+        return False
+
+    if len(gene_sets) == 2:
+        set1 = set(gene_sets[0])
+        set2 = set(gene_sets[1])
+        venn2([set1, set2],
+              (set_names[0], set_names[1]))
+        plt.title("")
+        plt.savefig(os.path.join(OUTPUT, outname), dpi=300)
+        plt.close()
+
+    elif len(gene_sets) == 3:
+        set1 = set(gene_sets[0])
+        set2 = set(gene_sets[1])
+        set3 = set(gene_sets[2])
+        venn2([set1, set2, set3],
+              (set_names[0], set_names[1], set_names[2]))
+        plt.title("")
+        plt.savefig(os.path.join(OUTPUT, outname), dpi=300)
+        plt.close()
+
+
