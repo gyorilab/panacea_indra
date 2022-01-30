@@ -538,3 +538,13 @@ def make_venn_plots(gene_sets: list, set_names: list, outname: str):
         plt.close()
 
 
+def make_cpdb_nature_receptor_ion_list():
+    return get_cpdb_receptors() | get_ion_channels() | get_nature_receptors()
+
+
+def make_cpdb_receptor_ion_list():
+    return get_ion_channels() | get_cpdb_receptors()
+
+
+def make_cpdb_nature_receptor_list():
+    return get_nature_receptors() | get_cpdb_receptors()
