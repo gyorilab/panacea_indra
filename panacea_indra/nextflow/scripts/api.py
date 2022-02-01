@@ -509,6 +509,13 @@ def get_nature_receptors():
     return nature_receptors
 
 
+def get_nature_ligands():
+    nature_interactions = pd.read_excel(os.path.join(INPUT, 'ncomms8866-s3.xlsx'),
+                                        sheet_name='All.Pairs')
+    nature_pairs = set(nature_interactions.loc[0:, 'Pair.Name'])
+    nature_ligands = {p.split('_')[0] for p in nature_pairs}
+    return nature_ligands
+
 def make_venn_plots(gene_sets: list, set_names: list, outname: str):
     font2 = {'family': 'Ariel', 'size': 8}  # use for labels
     plt.rc('font', **font2)  # sets the default font
