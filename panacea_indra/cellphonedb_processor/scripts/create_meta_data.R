@@ -34,37 +34,76 @@ seurat_integrated <- readRDS('../single_cell_analysis/RDS/seurat_integrated_anno
 incision <- subset(seurat_integrated, condition=='Incision')
 zymosan <- subset(seurat_integrated, condition=='Zymosan')
 uvb <- subset(seurat_integrated, condition=='UVB')
+incision_contra <- subset(seurat_integrated, condition=='Incision_contra')
 
 immune_object <- list('incision' = incision,
                       'zymosan' = zymosan,
-                      'uvb' = uvb)
+                      'uvb' = uvb,
+                      'incision_contra' = incision_contra)
+
 
 
 # Remove Undetermined cluster
 immune_object$incision <- subset(immune_object$incision, cell_type != 'Undetermined')
 immune_object$zymosan <- subset(immune_object$zymosan, cell_type != 'Undetermined')
 immune_object$uvb <- subset(immune_object$uvb, cell_type != 'Undetermined')
+immune_object$incision_contra <- subset(immune_object$incision_contra, 
+                                        cell_type != 'Undetermined')
 
 
 if(file.exists('../single_cell_analysis/RDS/neuron_cells.Rds') != T){
   
-  # Read neuron RDS
-  neuron_cells <- readRDS('../single_cell_analysis/RDS/nucseq_norm.rds')
+  # Read neuron data
+  neuron_cells <- readRDS('../single_cell_analysis/input_files/GSE154659_C57_Raw_counts.Rds')
+  neuron_cells <- CreateSeuratObject(neuron_cells)
+  neuron_cells@meta.data$cells <- rownames(neuron_cells@meta.data)
+  neuron_cells@meta.data$sample <- NA
+  neuron_cells$sample[which(str_detect(neuron_cells$cells, "male_C57_Naive_0_"))] <- "male_C57_Naive"
+  neuron_cells$sample[which(str_detect(neuron_cells$cells, "female_C57_Naive_0_"))] <- "female_C57_Naive"
+  neuron_cells <- subset(neuron_cells,
+                         subset = (sample == "male_C57_Naive" |
+                                   sample== "female_C57_Naive"))
   
-  # Remove samples with NA
-  neuron_cells <- subset(neuron_cells, sample!='NA')
+  # Normalize and scale data for the two samples (male and female)
+  neuron_cells_split <- SplitObject(neuron_cells, split.by = "sample")
+  
+  for (i in 1:length(neuron_cells_split)) {
+    neuron_cells_split[[i]] <- NormalizeData(neuron_cells_split[[i]])
+    neuron_cells_split[[i]] <- ScaleData(neuron_cells_split[[i]])
+  }
+  neuron_cells <- merge(neuron_cells_split[[1]], 
+                        neuron_cells_split[[2]], 
+                        merged.data=T)
+  DefaultAssay(neuron_cells) <- 'RNA'
+  
+  # Extract the neuron cell types from the meta data
+  neuron_cell_types <- str_match(neuron_cells@meta.data$cells, 
+                                 "(.*rep\\d_)([A-Za-z0-9\\s^_]+)(_.*)")[,3]
+  neuron_cells@meta.data$cellID <- neuron_cell_types
+  
+  
+  # Subset the object by celltypes
+  neuron_cells <- subset(neuron_cells,
+                         subset = (
+                           cellID == "cLTMR1" |  cellID == "p_cLTMR2" | 
+                           cellID == "PEP1" |  cellID == "PEP2" | 
+                           cellID == "NP" | cellID == "SST" |
+                           cellID == "NF1" | cellID == "NF2" | 
+                           cellID =="NF3"))
   
   ## Below chunk of code is to rename cell idents in neuron data
   active.ident_neuron <- data.frame('cells' = names(neuron_cells@active.ident),
                                     'gender' = unname(neuron_cells@active.ident))
   neuron_cell_types <- data.frame('cells' = neuron_cells$cells,
                                   'cell_types' = neuron_cells$cellID)
+  
   active.ident_neuron <- merge(active.ident_neuron, neuron_cell_types, by='cells')
   rownames(active.ident_neuron) <- active.ident_neuron$cells
   active.ident_neuron$gender <- NULL
   renamed_idents <- factor(active.ident_neuron$cell_types)
   names(renamed_idents) <- active.ident_neuron$cells
   neuron_cells@active.ident <- renamed_idents
+  
   saveRDS(neuron_cells, '../single_cell_analysis/RDS/neuron_cells.Rds')
 }else{
   neuron_cells <- readRDS('../single_cell_analysis/RDS/neuron_cells.Rds')
@@ -78,6 +117,7 @@ for (immune in immune_object) {
   count = count+1
   xname <- names(immune_object)[count]
   # Combining immune incision cells and neuron cells
+  DefaultAssay(immune) <- 'RNA'
   neuro_immune.combined <- merge(immune, y = neuron_cells, 
                                  add.cell.ids = c(xname, "neurons"), 
                                  project = paste0(xname,"_neuron"))
