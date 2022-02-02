@@ -8,29 +8,25 @@ library(EnhancedVolcano)
 library(SingleCellExperiment)
 
 ## Notes
-# Collapse the samples into one group 
-# Cluster res = 0.8 (25 clusters)
-# Cluster res = 0.6 (17 clusters)
-# For res(0.6) imp clusters -> 0,5,2,7,13,10,4 (Run analysis on these clusters)
-# Comparisons -> make comparisons b/w each samples
+# PCA for each cluster , group by (condition) -> try with RMacs
 
-wd <- ('~/gitHub/singlecell_model_analysis/')
+wd <- ('~/gitHub/panacea_indra/panacea_indra/single_cell_analysis/scripts/')
 setwd(wd)
 source('./api.R')
-seurat_integrated <- readRDS('./RDS/seurat_integrated_all_samples_clustered.Rds')
+seurat_integrated <- readRDS('../RDS/seurat_integrated_annotated_0.6.RDS')
 
 #seurat_stim <- subset(seurat_integrated, type=='STIM')
 
 
 # Extract raw counts and metadata to create SingleCellExperiment object
-counts <- seurat_integrated@assays$RNA@counts 
-
+counts <- seurat_integrated@assays$RNA@counts
 metadata <- seurat_integrated@meta.data
 
 # Set up metadata as desired for aggregation and DE analysis
 metadata$cluster_id <- factor(seurat_integrated@active.ident)
 
-metadata$sample_id <- factor(str_replace(seurat_integrated$orig.ident, '_', ''))
+metadata$sample_id <- factor(str_replace_all(seurat_integrated$orig.ident, '_', ''))
+#metadata$sample_id <- factor(seurat_integrated$orig.ident)
 
 #Create single cell experiment object
 sce <- SingleCellExperiment(assays = list(counts = counts), 
@@ -132,7 +128,6 @@ table(sce$cluster_id, sce$sample_id)
 
 
 # Get sample names for each of the cell type clusters
-
 # prep. data.frame for plotting
 get_sample_ids <- function(x){
   pb[[x]] %>%
@@ -170,24 +165,26 @@ metadata
 clusters <- levels(as.factor(metadata$cluster_id))
 clusters
 
-comparisons <- c()
-imp_clusters <- c('RM', 'Macs4', 'Dermal Macs')
+comparisons <- c('Injured', 'Healthy')
+imp_clusters <- c('Recruited Macs', 'Dermal Macs', 'Macs1')
 condition_groups <- list('condition'=c('Incision_Zymo', 
                                        'Incision_UVB', 
                                        'Zymo_UVB',
                                        'Incision_Healthy',
                                        'Zymo_Saline',
                                        'UVB_Sham'),
-                         'type'=c('HT_STIM','STIM_HT'))
+                         'type'=c('Healthy', 'Injured'))
 
-dir.create('./output/pseudo_bulk_analysis', 
+dir.create('../output/pseudo_bulk_analysis', 
            recursive = T, showWarnings = F)
-dir.create(paste0(wd,'/output/pseudo_bulk_analysis/plots/volcano'), 
+dir.create(paste0('../output/pseudo_bulk_analysis/plots/volcano'), 
+           showWarnings = F, recursive = T)
+dir.create(paste0('../output/pseudo_bulk_analysis/diff_files'), 
            showWarnings = F)
-dir.create(paste0(wd,'/output/pseudo_bulk_analysis/diff_files'), 
-           showWarnings = F)
+
 
 for(n in imp_clusters){
+  condition_name <- 'type'
   cluster_index <- which(clusters == n)
   # Testing the DESEQ with first cluster group
   # Subset the metadata to only the B cells
@@ -199,196 +196,182 @@ for(n in imp_clusters){
   rownames(cluster_metadata) <- cluster_metadata$sample_id
   head(cluster_metadata)
   
-  # Subset the counts to only the B cells
   counts <- pb[[clusters[cluster_index]]]
   
   cluster_counts <- data.frame(counts[, which(colnames(counts) %in% 
                                                 rownames(cluster_metadata))])
   
-  for(condition_name in names(condition_groups)){
-    for(comparisons in condition_groups[[condition_name]]){
-      # needd to only substitute the comparisons counts
-      comparisons <- str_split(comparisons, '_')[[1]]
-      active_rows <- which(cluster_metadata[, c(condition_name)] %in% 
-                             comparisons)
-      active_counts <- cluster_counts[, active_rows]
-      dds <- DESeqDataSetFromMatrix(active_counts, 
-                                    colData = cluster_metadata[active_rows,], 
-                                    design = formula(paste0('~',condition_name)))
-      dds <- DESeq(dds)
-      
-      res <- results(dds, 
-                     contrast = c(condition_name, comparisons[1], 
-                                  comparisons[2]),
-                     alpha = 0.05)
-      write.csv(res,
-                paste0(wd,'output/pseudo_bulk_analysis/diff_files/',n,'_',comparisons[[1]],
-                       '_',comparisons[[2]],'.csv'))
-      dir.create(paste0('./output/pseudo_bulk_analysis/plots/volcano'), showWarnings = F,
-                 recursive = T)
-      volcano_generate(res, titlename = paste0(n,' ',paste0(comparisons[[1]], '_', comparisons[[2]])), 
-                       file_loc = paste0(wd,'output/pseudo_bulk_analysis/plots/volcano/',
-                                         n,'_',paste0(comparisons[[1]], '_', comparisons[[2]])))
-      # Transform counts for data visualization
-      rld <- rlog(dds, blind=TRUE)
-      
-      # Extract the rlog matrix from the object and compute pairwise correlation values
-      anno <- cluster_metadata[active_rows, ]
-      rld_mat <- assay(rld)
-      rld_cor <- cor(rld_mat)
-      
-      # Plot heatmap
-      dir.create('./output/pseudo_bulk_analysis/plots/heatmaps/', showWarnings = F)
-      png(paste0('./output/pseudo_bulk_analysis/plots/heatmaps/',
-                 n, '_', comparisons[[1]], '_', comparisons[[2]],
-                 '_corr.png'),
-          width = 1000, height = 1000, res=200)
-      print(pheatmap(rld_cor, annotation = anno[, c(condition_name), 
-                                                drop=F]))
-      dev.off()
+  dds <- DESeqDataSetFromMatrix(cluster_counts, 
+                                colData = cluster_metadata, 
+                                design = ~type)
+  
+  dds <- DESeq(dds)
+  
+  res <- results(dds, 
+                 contrast = c('type', 'Injured', 'Healthy'),
+                 alpha = 0.05)
+  write.csv(res,
+            paste0('../output/pseudo_bulk_analysis/diff_files/',n,'_Injured_vs_Healthy.csv'))
+  
+  volcano_generate(res, titlename = paste0(n,' ',paste0('Injured', '_', 'Healthy')), 
+                   file_loc = paste0('../output/pseudo_bulk_analysis/plots/volcano/',
+                                     n,'_',paste0('Injured', '_', 'Healthy')))
+  
+  # Transform counts for data visualization
+  rld <- rlog(dds, blind=TRUE)
+  
+  # Extract the rlog matrix from the object and compute pairwise correlation values
+  anno <- cluster_metadata
+  rld_mat <- assay(rld)
+  rld_cor <- cor(rld_mat)
+  
+  # Plot heatmap
+  dir.create('../output/pseudo_bulk_analysis/plots/heatmaps/', showWarnings = F)
+  png(paste0('../output/pseudo_bulk_analysis/plots/heatmaps/',
+             n, '_Injured_vs_Healthy',
+             '_corr.png'),
+      width = 1500, height = 1000, res=150)
+  print(pheatmap(rld_cor, annotation = anno[, c(condition_name), 
+                                            drop=F]))
+  dev.off()
       
       
-      # Plot PCA
-      dir.create('./output/pseudo_bulk_analysis/plots/pca/', showWarnings = F,
-                 recursive = T)
-      png(paste0('./output/pseudo_bulk_analysis/plots/pca/cluster_',n,'_',
-                 comparisons[[1]], '_', comparisons[[2]],'.png'),
-          res=150, width = 1500, height = 1200)
-      print(DESeq2::plotPCA(rld, intgroup = condition_name))
-      dev.off()
-
-      #cluster_metadata$condition <- as.factor(cluster_metadata$condition[active_rows])
+  # Plot PCA
+  dir.create('../output/pseudo_bulk_analysis/plots/pca/', showWarnings = F,
+             recursive = T)
+  png(paste0('../output/pseudo_bulk_analysis/plots/pca/cluster_',n,'_',
+             'Injured_vs_Healthy','.png'),
+      res=150, width = 1500, height = 1200)
+  print(DESeq2::plotPCA(rld, intgroup = 'condition'))
+  dev.off()
+  
+  significant_genes <- list()
+  grouped_comp <- data.frame('gene'='',
+                             'padj'='',
+                             'group'='')
       
-      significant_genes <- list()
-      grouped_comp <- data.frame('gene'='',
-                                 'padj'='',
-                                 'group'='')
+  # Turn the results object into a tibble for use with tidyverse functions
+  res_tbl <- res %>%
+    data.frame() %>%
+    rownames_to_column(var="gene") %>%
+    as_tibble()
       
-      # Turn the results object into a tibble for use with tidyverse functions
-      res_tbl <- res %>%
-        data.frame() %>%
-        rownames_to_column(var="gene") %>%
-        as_tibble()
+  # Significant genes
+  # Set thresholds
+  padj_cutoff <- 0.05
       
-      # Significant genes
-      # Set thresholds
-      padj_cutoff <- 0.05
+  # Subset the significant results
+  sig_res <- dplyr::filter(res_tbl, padj < padj_cutoff) %>%
+    dplyr::arrange(padj)
+  up_reg <- dplyr::filter(res_tbl, log2FoldChange > 0) %>%
+    dplyr::arrange(desc(log2FoldChange))
+    
+  dir.create('../output/pseudo_bulk_analysis/up-regulated',showWarnings = F)
+  write.csv(up_reg,
+            paste0('../output/pseudo_bulk_analysis/diff_files/',n, "_", 
+                   'Injured', '_', 'Healthy','_up_reg.csv'),
+            quote = FALSE, 
+            row.names = FALSE)
+    
+    if(nrow(sig_res) >= 1){
+      # Check significant genes output
+      #sig_res
       
-      # Subset the significant results
-      sig_res <- dplyr::filter(res_tbl, padj < padj_cutoff) %>%
-        dplyr::arrange(padj)
-      up_reg <- dplyr::filter(res_tbl, log2FoldChange > 0) %>%
-        dplyr::arrange(desc(log2FoldChange))
-      
-      dir.create('./output/pseudo_bulk_analysis/up-regulated',showWarnings = F)
-      write.csv(up_reg,
-                paste0('./output/pseudo_bulk_analysis/up-regulated/cluster',n, "_", 
-                       comparisons[[1]], '_', comparisons[[2]],'_up_reg.csv'),
+      # Write significant results to file
+      dir.create('../output/pseudo_bulk_analysis/sig_diff_files',showWarnings = F)
+      write.csv(sig_res,
+                paste0('../output/pseudo_bulk_analysis/sig_diff_files/cluster',n, "_",
+                       'Injured', '_', 'Healthy','_sig_genes.csv'),
                 quote = FALSE, 
                 row.names = FALSE)
       
-      if(nrow(sig_res) >= 1){
-        # Check significant genes output
-        #sig_res
-        
-        # Write significant results to file
-        dir.create('./output/pseudo_bulk_analysis/sig_diff_files',showWarnings = F)
-        write.csv(sig_res,
-                  paste0('./output/pseudo_bulk_analysis/sig_diff_files/cluster',n, "_",
-                         comparisons[[1]], '_', comparisons[[2]],'_sig_genes.csv'),
-                  quote = FALSE, 
-                  row.names = FALSE)
-        
-        comp <- paste(comparisons[[1]], comparisons[[2]], sep='_')
-        significant_genes[[comp]] <- sig_res %>%
-          dplyr::select('gene', 'padj') %>%
-          dplyr::arrange(padj) %>% head(n=20)
-        significant_genes[[comp]]$group <- comp
-        grouped_comp <- rbind(grouped_comp, 
-                              significant_genes[[comp]])
-        
-        ## ggplot of top genes
-        normalized_counts <- counts(dds, 
-                                    normalized = TRUE)
-        
-        
-        ## Order results by padj values
-        top20_sig_genes <- sig_res %>%
-          dplyr::arrange(padj) %>%
-          dplyr::pull(gene) %>%
-          head(n=20)
-        d <- as.data.frame(sapply(colnames(normalized_counts), 
-                                  function(x) str_extract(
-                                    colnames(normalized_counts), x)))
-        
-        cols <- as.numeric(rownames(d[rowSums(is.na(d)) != ncol(d), ]))
-        
-        top20_sig_norm <- data.frame(normalized_counts)[, cols] %>% 
-          rownames_to_column(var = "gene") %>%
-          dplyr::filter(gene %in% top20_sig_genes)
-        
-        gathered_top20_sig <- top20_sig_norm %>%
-          gather(colnames(top20_sig_norm)[2:length(colnames(top20_sig_norm))],
-                 key = "samplename", value = "normalized_counts")
+      comp <- paste('Injured', 'Healthy', sep='_')
+      significant_genes[[comp]] <- sig_res %>%
+        dplyr::select('gene', 'padj') %>%
+        dplyr::arrange(padj) %>% head(n=20)
+      significant_genes[[comp]]$group <- comp
+      grouped_comp <- rbind(grouped_comp, 
+                            significant_genes[[comp]])
       
-        gathered_top20_sig <- inner_join(ei[, c("sample_id", "condition", "type" )], 
-                                         gathered_top20_sig, by = c("sample_id" = "samplename"))
-        
-        ## plot using ggplot2
-        dir.create('./output/pseudo_bulk_analysis/plots/scatter_plot/',
-                   showWarnings = F)
-        png(paste0('./output/pseudo_bulk_analysis/plots/scatter_plot/',
-                   n,'top20_sig_de_',  comparisons[[1]], '_',
-                   comparisons[[2]], '.png'),
-            width = 1000, height = 1000, res=200)
-        
-        print(ggplot(gathered_top20_sig) +
-                geom_point(aes(x = gene, 
-                               y = normalized_counts, 
-                               color = type), 
-                           position=position_jitter(w=0.1,h=0)) +
-                scale_y_log10() +
-                xlab("Genes") +
-                ylab("log10 Normalized Counts") +
-                ggtitle("Top 20 Significant DE Genes") +
-                theme_bw() +
-                theme(axis.text.x = element_text(angle = 45, hjust = 1)) + 
-                theme(plot.title = element_text(hjust = 0.5)))
-        dev.off()
-        
-        # Extract normalized counts for only the significant genes
-        sig_norm <- data.frame(normalized_counts)[, cols] %>%
-          rownames_to_column(var = "gene") %>%
-          dplyr::filter(gene %in% sig_res$gene)
-        
-        # Set a color palette
-        heat_colors <- brewer.pal(6, "YlOrRd")
-        
-        # Run pheatmap using the metadata data frame for the annotation
-        png(paste0('./output/pseudo_bulk_analysis/plots/heatmaps/',
-                   n,'heatmaps_', comparisons[[1]], '_',
-                   comparisons[[2]],'.png'),
-            width = 1000, height = 1000, res=200)
-        print(pheatmap(sig_norm[ , 2:length(colnames(sig_norm))], 
-                       color = heat_colors[2:length(colnames(sig_norm))], 
-                       cluster_rows = T, 
-                       show_rownames = F,
-                       annotation = cluster_metadata[, c(condition_name, "cluster_id")][active_rows, ],
-                       border_color = NA, 
-                       fontsize = 10, 
-                       scale = "row", 
-                       fontsize_row = 10, 
-                       height = 20
-        ))
-        dev.off()
-        
-      }
+      ## ggplot of top genes
+      normalized_counts <- counts(dds, 
+                                  normalized = TRUE)
+      
+      
+      ## Order results by padj values
+      top20_sig_genes <- sig_res %>%
+        dplyr::arrange(padj) %>%
+        dplyr::pull(gene) %>%
+        head(n=20)
+      d <- as.data.frame(sapply(colnames(normalized_counts), 
+                                function(x) str_extract(
+                                  colnames(normalized_counts), x)))
+      
+      cols <- as.numeric(rownames(d[rowSums(is.na(d)) != ncol(d), ]))
+      
+      top20_sig_norm <- data.frame(normalized_counts)[, cols] %>% 
+        rownames_to_column(var = "gene") %>%
+        dplyr::filter(gene %in% top20_sig_genes)
+      
+      gathered_top20_sig <- top20_sig_norm %>%
+        gather(colnames(top20_sig_norm)[2:length(colnames(top20_sig_norm))],
+               key = "samplename", value = "normalized_counts")
+    
+      gathered_top20_sig <- inner_join(ei[, c("sample_id", "condition", "type" )], 
+                                       gathered_top20_sig, by = c("sample_id" = "samplename"))
+      
+      ## plot using ggplot2
+      dir.create('../output/pseudo_bulk_analysis/plots/scatter_plot/',
+                 showWarnings = F)
+      png(paste0('../output/pseudo_bulk_analysis/plots/scatter_plot/',
+                 n,'top20_sig_de_',  'Injured', '_', 'Healthy', '.png'),
+          width = 1000, height = 1000, res=200)
+      
+      print(ggplot(gathered_top20_sig) +
+              geom_point(aes(x = gene, 
+                             y = normalized_counts, 
+                             color = type), 
+                         position=position_jitter(w=0.1,h=0)) +
+              scale_y_log10() +
+              xlab("Genes") +
+              ylab("log10 Normalized Counts") +
+              ggtitle("Top 20 Significant DE Genes") +
+              theme_bw() +
+              theme(axis.text.x = element_text(angle = 45, hjust = 1)) + 
+              theme(plot.title = element_text(hjust = 0.5)))
+      dev.off()
+      
+      # Extract normalized counts for only the significant genes
+      sig_norm <- data.frame(normalized_counts)[, cols] %>%
+        rownames_to_column(var = "gene") %>%
+        dplyr::filter(gene %in% sig_res$gene)
+      
+      # Set a color palette
+      heat_colors <- brewer.pal(6, "YlOrRd")
+      active_rows <- which(cluster_metadata[, c(condition_name)] %in% 
+                             comparisons)
+      # Run pheatmap using the metadata data frame for the annotation
+      png(paste0('../output/pseudo_bulk_analysis/plots/heatmaps/',
+                 n,'heatmaps_', 'Injured', '_', 'Healthy','.png'),
+          width = 1000, height = 1000, res=200)
+      print(pheatmap(sig_norm[ , 2:length(colnames(sig_norm))], 
+                     color = heat_colors[2:length(colnames(sig_norm))], 
+                     cluster_rows = T, 
+                     show_rownames = F,
+                     annotation = cluster_metadata[, c(condition_name, "cluster_id")][active_rows, ],
+                     border_color = NA, 
+                     fontsize = 10, 
+                     scale = "row", 
+                     fontsize_row = 10, 
+                     height = 20
+      ))
+      dev.off()
+      
+    }
       else{
         print(paste0('Skipping, no significant genes for ', comparisons[[1]],
                      ' VS ',comparisons[[2]], ' in cluster ', n))
         }
       }
-    }
-}
 
 
