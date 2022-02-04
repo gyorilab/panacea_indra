@@ -540,7 +540,7 @@ def make_venn_plots(gene_sets: list, set_names: list, outname: str):
         set1 = set(gene_sets[0])
         set2 = set(gene_sets[1])
         set3 = set(gene_sets[2])
-        venn2([set1, set2, set3],
+        venn3([set1, set2, set3],
               (set_names[0], set_names[1], set_names[2]))
         plt.title("")
         plt.savefig(os.path.join(OUTPUT, outname), dpi=300)
@@ -557,3 +557,13 @@ def make_cpdb_receptor_ion_list():
 
 def make_cpdb_nature_receptor_list():
     return get_nature_receptors() | get_cpdb_receptors()
+
+
+def get_cpdb_interactions():
+    cpdb_interactions = pd.read_csv(os.path.join(INPUT, os.pardir, 'panacea_indra', 'cellphonedb_processor',
+                                                 'output/incision_neuro_cellphonedb/neuro_incision/means.txt'),
+                                    sep='\t')
+    # flip some interactions to ligands -> receptors
+    cpdb_pairs = {c[1].split('_')[1]+'_'+c[1].split('_')[0] if c[7] == True else c[1]
+                  for r,c in cpdb_interactions.iterrows()}
+    return cpdb_pairs

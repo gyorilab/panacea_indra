@@ -2,8 +2,8 @@ from api import *
 
 
 if __name__ == '__main__':
-    receptor_genes = get_cpdb_receptors()
-    full_ligand_set = get_ligands()
+    receptor_genes = get_cpdb_receptors() | get_nature_receptors()
+    full_ligand_set = get_ligands() | get_nature_ligands()
     op = process_from_web()
     op_filtered = filter_op_stmts(op.statements,
                                   full_ligand_set,
@@ -14,7 +14,6 @@ if __name__ == '__main__':
     # Filter statements which are not ligands/receptors from
     # OmniPath database
     op_filtered = ac.filter_direct(op_filtered)
-
     op_filtered = ac.filter_by_curation(op_filtered,
                                         curations=db_curations)
 
@@ -29,8 +28,13 @@ if __name__ == '__main__':
                        fname=(os.path.join(OUTPUT, 'op_interactions.html')))
 
     nature_interactions = process_nature_paper()
-
     op_interactions = make_interaction_df(op_receptor_by_ligands)
+    cpdb_interactions = get_cpdb_interactions()
+
+    make_venn_plots([set(op_interactions.interactions),
+                     set(nature_interactions.interactions),
+                     set(cpdb_interactions)], ['Omnipath', 'Nature paper', 'cpdb'],
+                    'op_nature_cpdb_venn.png')
 
     # Create a cellphone db formatted indra_op database
     op_nature = \
@@ -40,7 +44,6 @@ if __name__ == '__main__':
     op_nature = pd.DataFrame(op_nature)
     op_nature_uniprot = []
     op_nature_interactions = []
-
     count = 0
     for r, c in op_nature.iterrows():
         count += 1
