@@ -237,7 +237,7 @@ def filter_to_complex_statements(stmts, ligands, receptors):
         if filter_to_bel(stmt):
             filtered_stmts.append(stmt)
             continue
-        if isinstance(stmt, Complex) or isinstance(stmts, Activation):
+        if isinstance(stmt, Complex) or isinstance(stmt, Activation):
             if len(stmt.members) <= 2:
                 if (any(a.name in ligands for a in stmt.members)
                         and any(a.name in receptors for a in stmt.members)):
@@ -257,17 +257,16 @@ def filter_by_evidence(stmts):
     filtered_hashes = set()
     readers = {'medscan', 'eidos', 'reach',
                'rlimsp', 'trips', 'sparser', 'isi'}
-    if isinstance(stmts, Complex) or isinstance(stmts, Activation):
-        for stmt in stmts:
-            sources = {ev.source_api for ev in stmt.evidence}
-            evidence = len(stmt.evidence)
+    for stmt in stmts:
+        sources = {ev.source_api for ev in stmt.evidence}
+        evidence = len(stmt.evidence)
 
-            if evidence < 2 and sources <= readers:
-                continue
-            elif sources == {'sparser'}:
-                continue
-            else:
-                filtered_hashes.add(stmt.get_hash())
+        if evidence < 2 and sources <= readers:
+            continue
+        elif sources == {'sparser'}:
+            continue
+        else:
+            filtered_hashes.add(stmt.get_hash())
     return filtered_hashes
 
 
