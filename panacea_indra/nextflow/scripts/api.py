@@ -10,7 +10,7 @@ from pathlib import Path
 import matplotlib.pyplot as plt
 from indra.util import batch_iter
 from collections import defaultdict
-from indra.statements import Complex
+from indra.statements import Complex, Activation
 from indra.sources import indra_db_rest
 import indra.tools.assemble_corpus as ac
 from matplotlib_venn import venn2, venn3
@@ -225,20 +225,49 @@ def filter_db_only(stmts):
     return new_stmts
 
 
+def filter_to_complex_statements(stmts, ligands, receptors):
+    ''' Filter statements to only complex type '''
+
+    readers = {'medscan', 'eidos', 'reach',
+               'rlimsp', 'trips', 'sparser',
+               'tees', 'geneways', 'isi'}
+
+    filtered_stmts = []
+    for stmt in stmts:
+        if filter_to_bel(stmt):
+            filtered_stmts.append(stmt)
+            continue
+        if isinstance(stmt, Complex) or isinstance(stmts, Activation):
+            if len(stmt.members) <= 2:
+                if (any(a.name in ligands for a in stmt.members)
+                        and any(a.name in receptors for a in stmt.members)):
+
+                    sources = {ev.source_api for ev in stmt.evidence}
+                    evidence = len(stmt.evidence)
+
+                    if sources == {'sparser'}:
+                        continue
+                    if evidence < 2 and sources <= readers:
+                        continue
+                    filtered_stmts.append(stmt)
+    return filtered_stmts
+
+
 def filter_by_evidence(stmts):
     filtered_hashes = set()
     readers = {'medscan', 'eidos', 'reach',
                'rlimsp', 'trips', 'sparser', 'isi'}
-    for stmt in stmts:
-        sources = {ev.source_api for ev in stmt.evidence}
-        evidence = len(stmt.evidence)
+    if isinstance(stmts, Complex) or isinstance(stmts, Activation):
+        for stmt in stmts:
+            sources = {ev.source_api for ev in stmt.evidence}
+            evidence = len(stmt.evidence)
 
-        if evidence < 2 and sources <= readers:
-            continue
-        elif sources == {'sparser'}:
-            continue
-        else:
-            filtered_hashes.add(stmt.get_hash())
+            if evidence < 2 and sources <= readers:
+                continue
+            elif sources == {'sparser'}:
+                continue
+            else:
+                filtered_hashes.add(stmt.get_hash())
     return filtered_hashes
 
 
@@ -433,34 +462,6 @@ def merge_interactions(interactions, genes_file, uniprot_file):
     cellphonedb_df = pd.DataFrame(cellphonedb_df)
     cellphonedb_df.to_csv(os.path.join(HERE, 'output', uniprot_file),
                           sep=",", index=False)
-
-
-def filter_to_complex_statements(stmts, ligands, receptors):
-    ''' Filter statements to only complex type '''
-
-    readers = {'medscan', 'eidos', 'reach',
-               'rlimsp', 'trips', 'sparser',
-               'tees', 'geneways', 'isi'}
-
-    filtered_stmts = []
-    for stmt in stmts:
-        if filter_to_bel(stmt):
-            filtered_stmts.append(stmt)
-            continue
-        if isinstance(stmt, Complex):
-            if len(stmt.members) <= 2:
-                if (any(a.name in ligands for a in stmt.members)
-                        and any(a.name in receptors for a in stmt.members)):
-
-                    sources = {ev.source_api for ev in stmt.evidence}
-                    evidence = len(stmt.evidence)
-
-                    if len(sources) == 1 and 'sparser' in sources:
-                        continue
-                    if evidence < 2 and sources <= readers:
-                        continue
-                    filtered_stmts.append(stmt)
-    return filtered_stmts
 
 
 def filter_to_bel(stmt):
