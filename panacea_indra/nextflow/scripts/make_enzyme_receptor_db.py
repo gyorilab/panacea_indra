@@ -60,22 +60,24 @@ if __name__ == '__main__':
                     'Statement_hash': hs
                 }
             )
-    logger.info('Enzyme-products receptor targets: %d' % (len(product_targets)))
 
     enzyme_target_df = pd.DataFrame(enzyme_target_df)
     stmts_to_filter = {'Complex', 'Activation'}
     boolean_series = enzyme_target_df['Interaction'].isin(stmts_to_filter)
     enzyme_target_df = enzyme_target_df[boolean_series]
-
+    logger.info('Statements after filtering to Complex and Activation type: %d' % \
+                len(set.union(set(enzyme_target_df.Statement_hash))))
 
     # download statements
     stmts_hash = download_statements(set.union(set(enzyme_target_df.Statement_hash)), ev=10000)
     # filter to direct statements
     stmts = ac.filter_direct(stmts_hash.values())
+    logger.info('Statements after filtering to direct interactions: %d' % \
+                len(stmts))
     # filter incorrect curations
     stmts = filter_incorrect_curations(stmts)
 
-    # filter out sparser hashes
+    # filter out hashes by statement evidence
     filtered_hashes = filter_by_evidence(stmts)
 
     filtered_enzyme_target_df = \

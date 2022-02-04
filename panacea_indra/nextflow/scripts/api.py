@@ -225,6 +225,13 @@ def filter_db_only(stmts):
     return new_stmts
 
 
+def _filter_to_complex(stmt, ligands, receptors):
+    if len(stmt.members) <= 2:
+        if (any(a.name in ligands for a in stmt.members)
+                and any(a.name in receptors for a in stmt.members)):
+            return stmt
+
+
 def filter_to_complex_statements(stmts, ligands, receptors):
     ''' Filter statements to only complex type '''
 
@@ -237,19 +244,14 @@ def filter_to_complex_statements(stmts, ligands, receptors):
         if filter_to_bel(stmt):
             filtered_stmts.append(stmt)
             continue
-        if isinstance(stmt, Complex) or isinstance(stmt, Activation):
-            if len(stmt.members) <= 2:
-                if (any(a.name in ligands for a in stmt.members)
-                        and any(a.name in receptors for a in stmt.members)):
-
-                    sources = {ev.source_api for ev in stmt.evidence}
-                    evidence = len(stmt.evidence)
-
-                    if sources == {'sparser'}:
-                        continue
-                    if evidence < 2 and sources <= readers:
-                        continue
-                    filtered_stmts.append(stmt)
+        if isinstance(stmt, Complex):
+            stmt = _filter_to_complex(stmt, ligands, receptors)
+        elif isinstance(stmt, Activation):
+            pass
+        else:
+            continue
+        if stmt:
+            filtered_stmts.append(stmt)
     return filtered_stmts
 
 
