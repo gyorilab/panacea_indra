@@ -1,5 +1,4 @@
 import os
-import re
 import sys
 import csv
 import json
@@ -16,7 +15,6 @@ import networkx
 import itertools
 import numpy as np
 import pandas as pd
-import enzyme_client
 from pathlib import Path
 from matplotlib import rc
 from bioinfokit import visuz
@@ -172,9 +170,6 @@ def get_genes_for_go_ids(go_ids):
     return gene_names
 
 
-
-
-
 def read_workbook(workbook):
     """ This function takes Excel workbook as an input and
     returns ligand and receptor gene list respectively.
@@ -245,7 +240,6 @@ def cx_assembler(indra_stmts, fname):
     ndex_network_id = cx_assembler.upload_model(ndex_cred=None,
                                                 private=True, style='default')
     return assembled_cx_report, ndex_network_id
-
 
 
 def get_receptor_by_ligands(receptors_in_data, ligands_in_data, stmts):
@@ -421,8 +415,8 @@ def merge_interactions(interactions, genes_file, uniprot_file):
     cellphonedb_df.to_csv(os.path.join(wd, 'output', uniprot_file), 
                           sep=",", index=0)
 
-if __name__ == '__main__':
 
+if __name__ == '__main__':
 	receptor_genes_go = get_receptors()
 	# remove all the receptors from the surface_protein_set
 	full_ligand_set = get_ligands() - receptor_genes_go
@@ -612,8 +606,6 @@ if __name__ == '__main__':
 	    agents_list = [agents.name for agents in stmts.agent_list()]
 	    if agents_list in f:
 	        filtered_indra_db_stmts.append(stmts)
-	    
-	    
 	indra_db_only_html_report = \
 	        html_assembler(
 	            filtered_indra_db_stmts,
