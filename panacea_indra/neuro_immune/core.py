@@ -69,17 +69,28 @@ def get_omnipath_interactions(cached=True):
 def get_ligands_receptors(cached=True):
     ligands_path = base_path.join('gene_lists', name='ligands.csv')
     receptors_path = base_path.join('gene_lists', name='receptors.csv')
+    cpdb_generated_proteins = base_path.join('resources',
+                                             name='protein_generated.csv')
     if not cached or not ligands_path.exists() or not receptors_path.exists():
         interactions = get_omnipath_interactions()
         enzymes = get_enzymes()
+
+        cpdb_df = pandas.read_csv(cpdb_generated_proteins)
+        cpdb_receptors_up = cpdb_df[cpdb_df.receptor].uniprot
+        cpdb_receptors_hgnc = [uniprot_client.get_gene_name(up)
+                               for up in cpdb_receptors_up]
+        cpdb_receptors_hgnc = {g for g in cpdb_receptors_hgnc
+                               if hgnc_client.get_hgnc_id(g)}
 
         ligands = {uniprot_client.get_gene_name(i['source'])
                    for i in interactions if 'COMPLEX' not in i['source']
                    and 'COMPLEX' not in i['target']
                    and i['consensus_direction'] == 1
                    and uniprot_client.is_human(i['source'])} \
-            - curated_receptors - set(enzymes) - curated_ion_channels
-        receptors = {uniprot_client.get_gene_name(i['target'])
+            - curated_receptors - set(enzymes) - curated_ion_channels \
+            - curated_ligands
+        receptors = cpdb_receptors_hgnc | \
+                    {uniprot_client.get_gene_name(i['target'])
                      for i in interactions if 'COMPLEX' not in i['source']
                      and 'COMPLEX' not in i['target']
                      and i['consensus_direction'] == 1
