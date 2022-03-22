@@ -59,7 +59,7 @@ def get_omnipath_interactions(cached=True):
         interactions = [i for i in interactions
                         if i['curation_effort'] > 0]
         with open(interactions_path, 'w') as fh:
-            json.dump(interactions, fh)
+            json.dump(interactions, fh, indent=1)
     else:
         with open(interactions_path, 'r') as fh:
             interactions = json.load(fh)
@@ -136,8 +136,86 @@ def get_ligand_receptor_statements(cached=True):
         with open(ligand_receptor_statements, 'rb') as fh:
             statements = pickle.load(fh)
     stmts_to_cpdb(statements, base_path.join('cpdb',
-        name='ligand_receptor_interactions.csv'))
+        name='ligand_receptor_interactions.csv'),
+        base_path.join('intermediate',
+                       name='ligand_receptor_interactions_hgnc.csv'))
     return statements
+
+
+def get_ligand_ion_channel_statements(cached=True):
+    ion_channels = get_ion_channels()
+    ligands, _ = get_ligands_receptors()
+
+    indra_sif_path = pystow.join('indra', 'db', name='sif.pkl')
+    with open(indra_sif_path, 'rb') as fh:
+        indra_df = pickle.load(fh)
+
+    indra_df = indra_df[indra_df['stmt_type'].isin({'Activation', 'Complex'})]
+    # Note that we can do this because Complexes show up in both directions
+    # in the SIF file so we don't lose any statements
+    indra_df = indra_df[indra_df['agA_name'].isin(ligands) &
+                        (indra_df['agA_ns'] == 'HGNC') &
+                        indra_df['agB_name'].isin(ion_channels) &
+                        (indra_df['agB_ns'] == 'HGNC')]
+
+    indra_df = indra_df[indra_df.apply(evidence_filter, axis=1)]
+
+    # Get statements based on hashes from INDRA DB
+    hashes = set(indra_df.stmt_hash)
+    stmts = list(download_statements(hashes, ev=10000).values())
+
+    # Filter by curation
+    from indra_db.client.principal.curation import get_curations
+    curs = get_curations()
+    stmts = ac.filter_by_curation(stmts, curs)
+
+    # Filter for directness
+    stmts = ac.filter_direct(stmts)
+    hashes = {stmt.get_hash() for stmt in stmts}
+
+    indra_df = indra_df[indra_df['stmt_hash'].isin(hashes)]
+
+    indra_df.to_csv(base_path.join('intermediate',
+                                   name='ligand_ion_channel_indra_sif.csv'),
+                    index=False)
+
+    with open(base_path.join('intermediate',
+                             name='ligand_ion_channel_statements.pkl'), 'wb') as fh:
+        pickle.dump(stmts, fh)
+
+    dump_stmts_html(stmts,
+                    base_path.join('intermediate',
+                                   name='ligand_ion_channel_statements.html'))
+
+    rows = [('id_cp_interaction', 'partner_a', 'partner_b', 'source')]
+    hgnc_rows = [('id_cp_interaction', 'partner_a', 'partner_b', 'source')]
+    interactions = sorted(set(zip(indra_df['agA_name'], indra_df['agB_name'])))
+    for idx, (ligand, ion_channel) in enumerate(interactions):
+        ion_channel_hgnc = hgnc_client.get_hgnc_id(ion_channel)
+        ion_channel_up = hgnc_client.get_uniprot_id(ion_channel_hgnc)
+        ligand_hgnc = hgnc_client.get_hgnc_id(ligand)
+        ligand_up = hgnc_client.get_uniprot_id(ligand_hgnc)
+        if not ligand_up or not ion_channel_up:
+            continue
+        rows.append(('INDRA-%s' % idx, ligand_up, ion_channel_up, 'INDRA'))
+        hgnc_rows.append(('INDRA-%s' % idx, ligand, ion_channel, 'INDRA'))
+    write_unicode_csv(
+        base_path.join('cpdb', name='ligand_ion_channel_interactions.csv'),
+        rows)
+    write_unicode_csv(
+        base_path.join('intermediate', name='ligand_ion_channel_interactions_hgnc.csv'),
+        hgnc_rows)
+    return stmts
+
+
+def evidence_filter(row):
+    readers = {'medscan', 'eidos', 'reach',
+               'rlimsp', 'trips', 'sparser', 'isi'}
+    if set(row['source_counts']) < readers and row['evidence_count'] == 1:
+        return False
+    elif set(row['source_counts']) ==  {'sparser'}:
+        return False
+    return True
 
 
 def get_enzyme_product_statements(cached=True):
@@ -168,16 +246,9 @@ def get_enzyme_product_statements(cached=True):
     # Note that we can do this because Complexes show up in both directions
     # in the SIF file so we don't lose any statements
     indra_df = indra_df[indra_df['agA_name'].isin(products) &
-                        indra_df['agB_name'].isin(targets)]
-
-    def evidence_filter(row):
-        readers = {'medscan', 'eidos', 'reach',
-                   'rlimsp', 'trips', 'sparser', 'isi'}
-        if set(row['source_counts']) < readers and row['evidence_count'] == 1:
-            return False
-        elif set(row['source_counts']) ==  {'sparser'}:
-            return False
-        return True
+                        (indra_df['agA_ns'] == 'CHEBI') &
+                        indra_df['agB_name'].isin(targets) &
+                        (indra_df['agB_ns'] == 'HGNC')]
 
     indra_df = indra_df[indra_df.apply(evidence_filter, axis=1)]
 
@@ -197,7 +268,7 @@ def get_enzyme_product_statements(cached=True):
     indra_df = indra_df[indra_df['stmt_hash'].isin(hashes)]
 
     indra_df.to_csv(base_path.join('intermediate',
-                                   name='enzyme_product_interactions.csv'),
+                                   name='enzyme_product_indra_sif.csv'),
                     index=False)
 
     with open(base_path.join('intermediate',
@@ -210,6 +281,7 @@ def get_enzyme_product_statements(cached=True):
     rows = [('id_cp_interaction', 'partner_a', 'partner_b', 'source')]
     interactions = sorted(set(zip(indra_df['agA_name'], indra_df['agB_name'])))
     idx = 0
+    hgnc_rows = [('id_cp_interaction', 'partner_a', 'partner_b', 'source')]
     for product, target in interactions:
         target_hgnc = hgnc_client.get_hgnc_id(target)
         target_up = hgnc_client.get_uniprot_id(target_hgnc)
@@ -220,26 +292,20 @@ def get_enzyme_product_statements(cached=True):
             if not enz_up or not target_up:
                 continue
             rows.append(('INDRA-%s' % idx, enz_up, target_up, 'INDRA'))
+            hgnc_rows.append(('INDRA-%s' % idx, enz, target, 'INDRA'))
             idx += 1
     write_unicode_csv(base_path.join('cpdb',
                                      name='enzyme_product_interactions.csv'),
                       rows)
+    write_unicode_csv(base_path.join('intermediate',
+                                     name='enzyme_product_interactions_hgnc.csv'),
+                      hgnc_rows)
     return stmts
 
 
-def indra_df_to_cpdb(indra_df, fname):
+def stmts_to_cpdb(stmts, cpdb_fname, hgnc_fname):
     rows = [('id_cp_interaction', 'partner_a', 'partner_b', 'source')]
-    for idx, (_, row) in enumerate(indra_df.iterrows()):
-        up_a = hgnc_client.get_uniprot_id(row['agA_name'])
-        up_b = hgnc_client.get_uniprot_id(row['agB_name'])
-        if not up_a or not up_b:
-            continue
-        rows.append(('INDRA-%s' % idx, up_a, up_b, 'INDRA'))
-    write_unicode_csv(fname, rows)
-
-
-def stmts_to_cpdb(stmts, fname):
-    rows = [('id_cp_interaction', 'partner_a', 'partner_b', 'source')]
+    hgnc_rows = [('id_cp_interaction', 'partner_a', 'partner_b', 'source')]
     for idx, stmt in enumerate(stmts):
         agents = stmt.agent_list()
         up_a = agents[0].db_refs.get('UP')
@@ -247,7 +313,10 @@ def stmts_to_cpdb(stmts, fname):
         if not up_a or not up_b:
             continue
         rows.append(('INDRA-%s' % idx, up_a, up_b, 'INDRA'))
-    write_unicode_csv(fname, rows)
+        hgnc_rows.append(('INDRA-%s' % idx, agents[0].name,
+                          agents[1].name, 'INDRA'))
+    write_unicode_csv(cpdb_fname, rows)
+    write_unicode_csv(hgnc_fname, hgnc_rows)
 
 
 def download_statements(hashes, ev=100):
