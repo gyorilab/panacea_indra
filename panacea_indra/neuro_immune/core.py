@@ -24,6 +24,7 @@ curated_enzymes = set()
 
 def get_enzymes(cached=True):
     enzymes_path = base_path.join('gene_lists', name='enzymes.csv')
+    conflict_curations = get_conflict_curations()
     if not cached or not enzymes_path.exists():
         import pyobo
         ontology = pyobo.get_ontology("eccode")
@@ -35,8 +36,8 @@ def get_enzymes(cached=True):
         enzymes = {uniprot_client.get_gene_name(u) for u in human_ups}
         enzymes = {g for g in enzymes if not hgnc_client.is_kinase(g)}
         enzymes = {g for g in enzymes if not hgnc_client.is_phosphatase(g)}
-        enzymes = enzymes - curated_receptors - curated_ligands \
-            - curated_ion_channels
+        enzymes = (enzymes | conflict_curations['enzyme']) \
+            - curated_receptors - curated_ligands - curated_ion_channels
         with open(base_path.join('gene_lists', name='enzymes.csv'), 'w') as fh:
             fh.write('\n'.join(sorted(enzymes)))
     else:
@@ -71,6 +72,7 @@ def get_ligands_receptors(cached=True):
     receptors_path = base_path.join('gene_lists', name='receptors.csv')
     cpdb_generated_proteins = base_path.join('resources',
                                              name='protein_generated.csv')
+    conflict_curations = get_conflict_curations()
     if not cached or not ligands_path.exists() or not receptors_path.exists():
         interactions = get_omnipath_interactions()
         enzymes = get_enzymes()
@@ -81,21 +83,25 @@ def get_ligands_receptors(cached=True):
                                for up in cpdb_receptors_up]
         cpdb_receptors_hgnc = {g for g in cpdb_receptors_hgnc
                                if hgnc_client.get_hgnc_id(g)}
-
-        ligands = {uniprot_client.get_gene_name(i['source'])
+        breakpoint()
+        ligands = ({uniprot_client.get_gene_name(i['source'])
                    for i in interactions if 'COMPLEX' not in i['source']
                    and 'COMPLEX' not in i['target']
                    and i['consensus_direction'] == 1
                    and uniprot_client.is_human(i['source'])} \
+            | conflict_curations['ligand']) \
             - curated_receptors - set(enzymes) - curated_ion_channels \
-            - curated_ligands
-        receptors = cpdb_receptors_hgnc | \
-                    {uniprot_client.get_gene_name(i['target'])
-                     for i in interactions if 'COMPLEX' not in i['source']
-                     and 'COMPLEX' not in i['target']
-                     and i['consensus_direction'] == 1
-                     and uniprot_client.is_human(i['target'])} \
-            - curated_ligands - set(enzymes) - curated_ion_channels
+            - curated_ligands - conflict_curations['receptor']
+        receptors = (cpdb_receptors_hgnc | \
+                  {uniprot_client.get_gene_name(i['target'])
+                   for i in interactions if 'COMPLEX' not in i['source']
+                   and 'COMPLEX' not in i['target']
+                   and i['consensus_direction'] == 1
+                   and uniprot_client.is_human(i['target'])} \
+            | conflict_curations['receptor']) \
+            - curated_ligands - set(enzymes) - curated_ion_channels \
+            - conflict_curations['ligand'] - conflict_curations['ion channel'] \
+            - conflict_curations['enzyme']
 
         assert not ligands & receptors
 
@@ -113,15 +119,18 @@ def get_ligands_receptors(cached=True):
 
 def get_ion_channels(cached=True):
     ion_channel_path = base_path.join('gene_lists', name='ion_channels.csv')
+    conflict_curations = get_conflict_curations()
     if not cached or not ion_channel_path.exists():
         idg_ion_channels = base_path.join('resources',
                                           name='idg_ion_channels.csv')
         with open(idg_ion_channels) as fh:
             idg_ion_channels = fh.read().splitlines()
-        ion_channels = sorted((set(idg_ion_channels) | curated_ion_channels)
+        ion_channels = sorted((set(idg_ion_channels) | curated_ion_channels
+                               | conflict_curations['ion channel'])
                               - curated_receptors
                               - curated_ligands
-                              - curated_enzymes)
+                              - curated_enzymes
+                              - conflict_curations['receptor'])
         with open(ion_channel_path, 'w') as fh:
             fh.write('\n'.join(ion_channels))
     else:
@@ -217,6 +226,19 @@ def get_ligand_ion_channel_statements(cached=True):
         base_path.join('intermediate', name='ligand_ion_channel_interactions_hgnc.csv'),
         hgnc_rows)
     return stmts
+
+
+def get_conflict_curations():
+    fname = base_path.join('resources',
+                           name='Annotation of conflicted genes_032222.xlsx')
+    df = pandas.read_excel(fname, engine='openpyxl', header=None)
+    annotations = defaultdict(set)
+    for _, row in df.iterrows():
+        if not pandas.isna(row[1]) and not pandas.isna(row[2]):
+            entity_type = row[2].strip().lower()
+            gene_name = row[1].strip()
+            annotations[entity_type].add(gene_name)
+    return dict(annotations)
 
 
 def evidence_filter(row):
