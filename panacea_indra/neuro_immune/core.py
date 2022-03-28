@@ -12,6 +12,7 @@ from indra.ontology.bio import bio_ontology
 from indra.databases import uniprot_client, hgnc_client
 from indra.sources import omnipath
 from indra.sources.omnipath.api import _get_interactions
+from indra.sources.indra_db_rest import get_curations
 from indra.databases import uniprot_client
 
 base_path = pystow.module('neuroimmune')
@@ -185,7 +186,6 @@ def get_ligand_ion_channel_statements(cached=True):
     stmts = list(download_statements(hashes, ev=10000).values())
 
     # Filter by curation
-    from indra_db.client.principal.curation import get_curations
     curs = get_curations()
     stmts = ac.filter_by_curation(stmts, curs)
 
@@ -290,7 +290,6 @@ def get_enzyme_product_statements(cached=True):
     stmts = list(download_statements(hashes, ev=10000).values())
 
     # Filter by curation
-    from indra_db.client.principal.curation import get_curations
     curs = get_curations()
     stmts = ac.filter_by_curation(stmts, curs)
 
@@ -339,15 +338,19 @@ def get_enzyme_product_statements(cached=True):
 def stmts_to_cpdb(stmts, cpdb_fname, hgnc_fname):
     rows = [('id_cp_interaction', 'partner_a', 'partner_b', 'source')]
     hgnc_rows = [('id_cp_interaction', 'partner_a', 'partner_b', 'source')]
+    added = set()
     for idx, stmt in enumerate(stmts):
         agents = stmt.agent_list()
         up_a = agents[0].db_refs.get('UP')
         up_b = agents[1].db_refs.get('UP')
         if not up_a or not up_b:
             continue
+        if (up_a, up_b) in added:
+            continue
         rows.append(('INDRA-%s' % idx, up_a, up_b, 'INDRA'))
         hgnc_rows.append(('INDRA-%s' % idx, agents[0].name,
                           agents[1].name, 'INDRA'))
+        added.add((up_a, up_b))
     write_unicode_csv(cpdb_fname, rows)
     write_unicode_csv(hgnc_fname, hgnc_rows)
 
@@ -375,7 +378,7 @@ def dump_stmts_html(stmts, fname):
 
 def dump_ligand_receptor_omnipath_statements_csv():
     csv_path = base_path.join(name='ligand_receptor_omnipath_statements.csv')
-    statements = get_ligand_receptor_omnipath_statements()
+    statements = get_ligand_receptor_statements()
     rows = [('A', 'B', 'Interaction', 'CellPhoneDB', 'Ramilowski2015',
              'sources', 'PMIDs')]
     for stmt in statements:
