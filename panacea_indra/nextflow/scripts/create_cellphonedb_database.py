@@ -417,208 +417,208 @@ def merge_interactions(interactions, genes_file, uniprot_file):
 
 
 if __name__ == '__main__':
-	receptor_genes_go = get_receptors()
-	# remove all the receptors from the surface_protein_set
-	full_ligand_set = get_ligands() - receptor_genes_go
+    receptor_genes_go = get_receptors()
+    # remove all the receptors from the surface_protein_set
+    full_ligand_set = get_ligands() - receptor_genes_go
 
-	# Now get INDRA DB Statements for the receptor-ligand pairs
-	hashes_by_gene_pair = get_hashes_by_gene_pair(indra_df, full_ligand_set,
-	                                              receptor_genes_go)
+    # Now get INDRA DB Statements for the receptor-ligand pairs
+    hashes_by_gene_pair = get_hashes_by_gene_pair(indra_df, full_ligand_set,
+                                                  receptor_genes_go)
 
-	# get the union of all the statement hashes 
-	all_hashes = set.union(*hashes_by_gene_pair.values())
-	# Download the statements by hashes
-	stmts_by_hash = download_statements(all_hashes)
-	# get only the list of all the available statemtns
-	indra_db_stmts = list(stmts_by_hash.values())
+    # get the union of all the statement hashes
+    all_hashes = set.union(*hashes_by_gene_pair.values())
+    # Download the statements by hashes
+    stmts_by_hash = download_statements(all_hashes)
+    # get only the list of all the available statemtns
+    indra_db_stmts = list(stmts_by_hash.values())
 
-	# Filtering out the indirect INDRA statements
-	indra_db_stmts = ac.filter_direct(indra_db_stmts)
-	        
-
-	# Fetch omnipath database biomolecular interactions and
-	# process them into INDRA statements
-	op = process_from_web()
-
-	# Filter statements which are not ligands/receptors from
-	# OmniPath database
-	op_filtered = filter_op_stmts(op.statements, full_ligand_set,
-	                              receptor_genes_go)
-	op_filtered = ac.filter_direct(op_filtered)
+    # Filtering out the indirect INDRA statements
+    indra_db_stmts = ac.filter_direct(indra_db_stmts)
 
 
-	op_filtered = ac.filter_by_curation(op_filtered,
-	                                    curations=db_curations)
+    # Fetch omnipath database biomolecular interactions and
+    # process them into INDRA statements
+    op = process_from_web()
+
+    # Filter statements which are not ligands/receptors from
+    # OmniPath database
+    op_filtered = filter_op_stmts(op.statements, full_ligand_set,
+                                  receptor_genes_go)
+    op_filtered = ac.filter_direct(op_filtered)
 
 
-	# Merge omnipath/INDRA statements and run assembly
-	indra_op_stmts = ac.run_preassembly(indra_db_stmts + op_filtered,
-	                                    run_refinement=False)
-	# Filter incorrect curations        
-	indra_op_filtered = filter_incorrect_curations(indra_op_stmts)
-
-	# Filter complex statements
-	indra_op_filtered = filter_complex_statements(indra_op_filtered,
-	                                              full_ligand_set,
-	                                              receptor_genes_go)
-
-	# We do this again because when removing complex members, we
-	# end up with more duplicates
-	indra_op_filtered = ac.run_preassembly(indra_op_filtered,
-	                                       run_refinement=False)
-	    
-
-	# Filter complex OP statements
-	op_filtered = filter_complex_statements(op_filtered,
-	                                        full_ligand_set,
-	                                        receptor_genes_go)
-	op_filtered = ac.run_preassembly(op_filtered, run_refinement=False)
-
-	# Filtering indra_db stmts
-	indra_db_stmts = ac.filter_by_curation(indra_db_stmts,
-	                                       curations=db_curations)
-
-	indra_db_stmts = filter_complex_statements(indra_db_stmts,
-	                                           full_ligand_set,
-	                                           receptor_genes_go)
-
-	indra_db_stmts = ac.run_preassembly(indra_db_stmts, run_refinement=False)
+    op_filtered = ac.filter_by_curation(op_filtered,
+                                        curations=db_curations)
 
 
+    # Merge omnipath/INDRA statements and run assembly
+    indra_op_stmts = ac.run_preassembly(indra_db_stmts + op_filtered,
+                                        run_refinement=False)
+    # Filter incorrect curations
+    indra_op_filtered = filter_incorrect_curations(indra_op_stmts)
 
-	# get receptor by ligands for OP
-	op_receptor_by_ligands = get_receptor_by_ligands(receptor_genes_go, 
-	                                                 full_ligand_set, 
-	                                                 op_filtered)
+    # Filter complex statements
+    indra_op_filtered = filter_complex_statements(indra_op_filtered,
+                                                  full_ligand_set,
+                                                  receptor_genes_go)
 
-	# get receptor by ligands for indra_op
-	indra_op_receptor_by_ligands = get_receptor_by_ligands(receptor_genes_go, 
-	                                                       full_ligand_set, 
-	                                                       indra_op_filtered)
-
-	# get receptor by ligands for indra db
-	indra_db_receptor_by_ligands = get_receptor_by_ligands(receptor_genes_go, 
-	                                                       full_ligand_set, 
-	                                                       indra_db_stmts)
+    # We do this again because when removing complex members, we
+    # end up with more duplicates
+    indra_op_filtered = ac.run_preassembly(indra_op_filtered,
+                                           run_refinement=False)
 
 
-	# Assemble the statements into HTML formatted report and save into a file
-	op_html_report = \
-	    html_assembler(
-	        op_filtered,
-	        fname=os.path.join(wd, 'output', 'op_interactions.html'))
+    # Filter complex OP statements
+    op_filtered = filter_complex_statements(op_filtered,
+                                            full_ligand_set,
+                                            receptor_genes_go)
+    op_filtered = ac.run_preassembly(op_filtered, run_refinement=False)
 
-	indra_op_html_report = \
-	        html_assembler(
-	            indra_op_filtered,
-	            fname=os.path.join(wd, 'output', 'indra_op_interactions.html'))
+    # Filtering indra_db stmts
+    indra_db_stmts = ac.filter_by_curation(indra_db_stmts,
+                                           curations=db_curations)
+
+    indra_db_stmts = filter_complex_statements(indra_db_stmts,
+                                               full_ligand_set,
+                                               receptor_genes_go)
+
+    indra_db_stmts = ac.run_preassembly(indra_db_stmts, run_refinement=False)
 
 
 
-	nature_interactions = process_nature_paper()
+    # get receptor by ligands for OP
+    op_receptor_by_ligands = get_receptor_by_ligands(receptor_genes_go,
+                                                     full_ligand_set,
+                                                     op_filtered)
 
-	# Make nature interactions dataframe
-	nature_interactions_df = []
-	for r,c in nature_interactions.iterrows():
-	    nature_interactions_df.append(
-	    {
-	        'ligands': c[0],
-	        'receptors': c[1],
-	        'interactions': c[0]+'_'+c[1]
+    # get receptor by ligands for indra_op
+    indra_op_receptor_by_ligands = get_receptor_by_ligands(receptor_genes_go,
+                                                           full_ligand_set,
+                                                           indra_op_filtered)
 
-	    }
-	)
-
-	nature_interactions_df = pd.DataFrame(nature_interactions_df)
-
-
-	# Make OP interactions dataframe
-	op_interactions = []
-	for receptors, ligands in op_receptor_by_ligands.items():
-	    for lg in ligands:
-	        op_interactions.append(
-	        {
-	            'ligands':lg,
-	            'receptors': receptors,
-	            'interactions': lg+'_'+receptors
-	        }
-	    )
-	op_df = pd.DataFrame(op_interactions)
+    # get receptor by ligands for indra db
+    indra_db_receptor_by_ligands = get_receptor_by_ligands(receptor_genes_go,
+                                                           full_ligand_set,
+                                                           indra_db_stmts)
 
 
-	# Make INDRA_OP interactions dataframe
-	indra_op_interactions = []
-	for receptors, ligands in indra_op_receptor_by_ligands.items():
-	    for lg in ligands:
-	        indra_op_interactions.append(
-	        {
-	            'ligands':lg,
-	            'receptors': receptors,
-	            'interactions': lg+'_'+receptors
-	        }
-	    )
-	indra_op_df = pd.DataFrame(indra_op_interactions)
+    # Assemble the statements into HTML formatted report and save into a file
+    op_html_report = \
+        html_assembler(
+            op_filtered,
+            fname=os.path.join(wd, 'output', 'op_interactions.html'))
+
+    indra_op_html_report = \
+            html_assembler(
+                indra_op_filtered,
+                fname=os.path.join(wd, 'output', 'indra_op_interactions.html'))
 
 
-	# Make INDRA_DB interactions dataframe
-	indra_db_interactions = []
-	for receptors, ligands in indra_db_receptor_by_ligands.items():
-	    for lg in ligands:
-	        indra_db_interactions.append(
-	        {
-	            'ligands':lg,
-	            'receptors': receptors,
-	            'interactions': lg+'_'+receptors
-	        }
-	    )
-	indra_db_df = pd.DataFrame(indra_db_interactions)
+
+    nature_interactions = process_nature_paper()
+
+    # Make nature interactions dataframe
+    nature_interactions_df = []
+    for r,c in nature_interactions.iterrows():
+        nature_interactions_df.append(
+        {
+            'ligands': c[0],
+            'receptors': c[1],
+            'interactions': c[0]+'_'+c[1]
+
+        }
+    )
+
+    nature_interactions_df = pd.DataFrame(nature_interactions_df)
 
 
-	unique_op_interactions = set(op_df.interactions)
-	unique_nature_interactions = set(nature_interactions_df.interactions)
-	unique_indra_op_interactions = set(indra_op_df.interactions)
-	unique_indra_db_interactions = set(indra_db_df.interactions)
-	unique_indra_db_only = unique_indra_db_interactions - (unique_op_interactions | unique_nature_interactions)
-
-	# Nature and OP interactions only
-	unique_op_nature_interactions = unique_op_interactions | unique_nature_interactions
-
-	logger.info('Total OP interactions: %d'% len(unique_op_interactions))
-	logger.info('Total Nature interactions: %d'% len(unique_nature_interactions))
-	logger.info('Total OP and Nature interactions: %d'% len(unique_op_nature_interactions))
-
-	merge_interactions(unique_op_nature_interactions, 'op_nature_genes.csv', 'op_nature_uniprot.csv')
+    # Make OP interactions dataframe
+    op_interactions = []
+    for receptors, ligands in op_receptor_by_ligands.items():
+        for lg in ligands:
+            op_interactions.append(
+            {
+                'ligands':lg,
+                'receptors': receptors,
+                'interactions': lg+'_'+receptors
+            }
+        )
+    op_df = pd.DataFrame(op_interactions)
 
 
-	# Nature and INDRA_OP interactions only
-	unique_indra_op_nature_interactions = unique_indra_op_interactions | unique_nature_interactions
-
-	logger.info('Total INDRA_OP interactions: %d'% len(unique_indra_op_interactions))
-	logger.info('Total Nature interactions: %d'% len(unique_nature_interactions))
-	logger.info('Total INDRA_OP and Nature interactions: %d'% len(unique_indra_op_nature_interactions))
-
-	merge_interactions(unique_indra_op_nature_interactions, 'indra_op_nature_genes.csv', 'indra_op_nature_uniprot.csv')
-
-	filtered_indra_db_stmts = []
-	f = [s.split('_') for s in unique_indra_db_only]
-
-	for stmts in indra_db_stmts:
-	    agents_list = [agents.name for agents in stmts.agent_list()]
-	    if agents_list in f:
-	        filtered_indra_db_stmts.append(stmts)
-	indra_db_only_html_report = \
-	        html_assembler(
-	            filtered_indra_db_stmts,
-	            fname=os.path.join(wd, 'output', 'indra_db_only_interactions.html'))
+    # Make INDRA_OP interactions dataframe
+    indra_op_interactions = []
+    for receptors, ligands in indra_op_receptor_by_ligands.items():
+        for lg in ligands:
+            indra_op_interactions.append(
+            {
+                'ligands':lg,
+                'receptors': receptors,
+                'interactions': lg+'_'+receptors
+            }
+        )
+    indra_op_df = pd.DataFrame(indra_op_interactions)
 
 
-	######## Checking for OP specific and common interaction b/w Nature and OP
-	#common_op_nature_interaction = set(op_df.interactions) & set(nature_df.interactions)
-	#common_op_nature_interaction = pd.DataFrame([{'interactions':i} for i in common_op_nature_interaction])
-	#common_op_nature_interaction.to_csv(os.path.join(wd, 'output/common_op_nature_interaction.csv'), 
-	#                 sep=",", index=0)
+    # Make INDRA_DB interactions dataframe
+    indra_db_interactions = []
+    for receptors, ligands in indra_db_receptor_by_ligands.items():
+        for lg in ligands:
+            indra_db_interactions.append(
+            {
+                'ligands':lg,
+                'receptors': receptors,
+                'interactions': lg+'_'+receptors
+            }
+        )
+    indra_db_df = pd.DataFrame(indra_db_interactions)
 
-	#op_specific = set(op_df.interactions) - set(nature_df.interactions)
-	#op_specific = pd.DataFrame([{'interactions':i} for i in op_specific])
-	#op_specific.to_csv(os.path.join(wd, 'output/op_specific.csv'), 
-	#                 sep=",", index=0)
+
+    unique_op_interactions = set(op_df.interactions)
+    unique_nature_interactions = set(nature_interactions_df.interactions)
+    unique_indra_op_interactions = set(indra_op_df.interactions)
+    unique_indra_db_interactions = set(indra_db_df.interactions)
+    unique_indra_db_only = unique_indra_db_interactions - (unique_op_interactions | unique_nature_interactions)
+
+    # Nature and OP interactions only
+    unique_op_nature_interactions = unique_op_interactions | unique_nature_interactions
+
+    logger.info('Total OP interactions: %d'% len(unique_op_interactions))
+    logger.info('Total Nature interactions: %d'% len(unique_nature_interactions))
+    logger.info('Total OP and Nature interactions: %d'% len(unique_op_nature_interactions))
+
+    merge_interactions(unique_op_nature_interactions, 'op_nature_genes.csv', 'op_nature_uniprot.csv')
+
+
+    # Nature and INDRA_OP interactions only
+    unique_indra_op_nature_interactions = unique_indra_op_interactions | unique_nature_interactions
+
+    logger.info('Total INDRA_OP interactions: %d'% len(unique_indra_op_interactions))
+    logger.info('Total Nature interactions: %d'% len(unique_nature_interactions))
+    logger.info('Total INDRA_OP and Nature interactions: %d'% len(unique_indra_op_nature_interactions))
+
+    merge_interactions(unique_indra_op_nature_interactions, 'indra_op_nature_genes.csv', 'indra_op_nature_uniprot.csv')
+
+    filtered_indra_db_stmts = []
+    f = [s.split('_') for s in unique_indra_db_only]
+
+    for stmts in indra_db_stmts:
+        agents_list = [agents.name for agents in stmts.agent_list()]
+        if agents_list in f:
+            filtered_indra_db_stmts.append(stmts)
+    indra_db_only_html_report = \
+            html_assembler(
+                filtered_indra_db_stmts,
+                fname=os.path.join(wd, 'output', 'indra_db_only_interactions.html'))
+
+
+    ######## Checking for OP specific and common interaction b/w Nature and OP
+    #common_op_nature_interaction = set(op_df.interactions) & set(nature_df.interactions)
+    #common_op_nature_interaction = pd.DataFrame([{'interactions':i} for i in common_op_nature_interaction])
+    #common_op_nature_interaction.to_csv(os.path.join(wd, 'output/common_op_nature_interaction.csv'),
+    #                 sep=",", index=0)
+
+    #op_specific = set(op_df.interactions) - set(nature_df.interactions)
+    #op_specific = pd.DataFrame([{'interactions':i} for i in op_specific])
+    #op_specific.to_csv(os.path.join(wd, 'output/op_specific.csv'),
+    #                 sep=",", index=0)
