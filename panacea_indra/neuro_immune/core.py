@@ -84,7 +84,6 @@ def get_ligands_receptors(cached=True):
                                for up in cpdb_receptors_up]
         cpdb_receptors_hgnc = {g for g in cpdb_receptors_hgnc
                                if hgnc_client.get_hgnc_id(g)}
-        breakpoint()
         ligands = ({uniprot_client.get_gene_name(i['source'])
                    for i in interactions if 'COMPLEX' not in i['source']
                    and 'COMPLEX' not in i['target']
@@ -151,6 +150,18 @@ def get_ligand_receptor_statements(cached=True):
         statements = [stmt for stmt in op.statements
                       if stmt.agent_list()[0].name in ligands
                       and stmt.agent_list()[1].name in receptors]
+
+        # Enrich Omnipath statements with INDRA evidence
+        stmts_by_hash = {stmt.get_hash(): stmt for stmt in statements}
+        hashes = list(stmts_by_hash)
+        evs_by_hash = download_evidences(hashes)
+        for hash, evs in evs_by_hash.items():
+            stmts_by_hash[hash].evidence += evs
+
+        dump_stmts_html(statements,
+                        base_path.join('intermediate',
+                                       name='ligand_receptor_statements.html'))
+
         with open(ligand_receptor_statements, 'wb') as fh:
             pickle.dump(statements, fh)
     else:
@@ -367,6 +378,12 @@ def download_statements(hashes, ev=100):
         for stmt in idbp.statements:
             stmts_by_hash[stmt.get_hash()] = stmt
     return stmts_by_hash
+
+
+def download_evidences(hashes):
+    from indra_cogex.client.queries import get_evidences_for_stmt_hashes
+    evs_by_hash = get_evidences_for_stmt_hashes(hashes)
+    return evs_by_hash
 
 
 def dump_stmts_html(stmts, fname):
