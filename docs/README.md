@@ -12,9 +12,9 @@ explain experimental observations or to make predictions.
 
 
 In the context of the [`DARPA Panacea program`](https://www.darpa.mil/program/panacea),
-the [`INDRA team`](https://indralab.github.io/) at the
-[`Laboratory of Systems Pharmacology, Harvard Medical School`](https://hits.harvard.edu/)
-is working on understanding the regulation of pain and inflammation with the
+the [`INDRA team`](https://gyorilab.github.io/), formerly at the
+[`Laboratory of Systems Pharmacology, Harvard Medical School`](https://hits.harvard.edu/),
+worked on understanding the regulation of pain and inflammation with the
 goal of finding new therapeutics using INDRA.
 
 - [Ion-channel mechanism knowledge base](#ion-channel-kb)
@@ -27,7 +27,7 @@ goal of finding new therapeutics using INDRA.
 Ion-channel mechanism knowledge base
 ------------------------------------
 
-<img align="left" src="https://raw.githubusercontent.com/indralab/panacea_indra/website/docs/ion_channel_kb_network.png" width="150" height="112" />
+<img align="left" src="https://raw.githubusercontent.com/gyorilab/panacea_indra/website/docs/ion_channel_kb_network.png" width="150" height="112" />
 
 We used INDRA to assemble all mechanisms that 65 ion-channels that are
 particularly important for nociception are involved in.
@@ -106,23 +106,10 @@ to improve the models (see curation tutorial
 [`SCN8A`](https://bigmech.s3.amazonaws.com/panacea/ion_channels/SCN8A.html)
 [`SCN9A`](https://bigmech.s3.amazonaws.com/panacea/ion_channels/SCN9A.html)
 
-Ion-channel inhibitor search
-----------------------------
-
-<img align="left" src="https://raw.githubusercontent.com/indralab/panacea_indra/website/docs/ion_channel_inhibitor_search.png" width="150" height="112" />
-The ion-channel inhibitor search is an application that allows selecting some
-ion-channels as "desirable" drug targets and others as "undesirable" drug targets.
-The application then searches all INDRA Statements in the ion-channel knowledge
-base, combined with the [`Small Molecule Suite / Target Affintiy Spectrum`](https://labsyspharm.shinyapps.io/smallmoleculesuite/)
-data to find regulators (drugs or other entities that may be relevant) with
-the desired properties.
-
-The ion-channel inhibitor search is available [`here`](http://34.230.33.149:5000/).
-
 A self-updating model of pain mechanisms
 ----------------------------------------
 
-<img align="left" src="https://raw.githubusercontent.com/indralab/panacea_indra/website/docs/painmachine_image.png" width="150" height="112" />
+<img align="left" src="https://raw.githubusercontent.com/gyorilab/panacea_indra/website/docs/painmachine_image.png" width="150" height="112" />
 EMMAA (Ecosystem of Machine-maintained Models with Automated Analysis) makes
 available a set of
 computational models that are kept up-to-date using automated machine reading,
